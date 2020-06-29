@@ -528,17 +528,19 @@ qemuBackupJobTerminate(virDomainObjPtr vm,
 
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobInfoPrivatePtr completedJobInfo;
     size_t i;
 
     qemuDomainJobInfoUpdateTime(priv->job.current);
 
     g_clear_pointer(&priv->job.completed, qemuDomainJobInfoFree);
     priv->job.completed = qemuDomainJobInfoCopy(priv->job.current);
+    completedJobInfo = priv->job.completed->privateData;
 
-    priv->job.completed->stats.backup.total = priv->backup->push_total;
-    priv->job.completed->stats.backup.transferred = priv->backup->push_transferred;
-    priv->job.completed->stats.backup.tmp_used = priv->backup->pull_tmp_used;
-    priv->job.completed->stats.backup.tmp_total = priv->backup->pull_tmp_total;
+    completedJobInfo->stats.backup.total = priv->backup->push_total;
+    completedJobInfo->stats.backup.transferred = priv->backup->push_transferred;
+    completedJobInfo->stats.backup.tmp_used = priv->backup->pull_tmp_used;
+    completedJobInfo->stats.backup.tmp_total = priv->backup->pull_tmp_total;
 
     priv->job.completed->status = jobstatus;
     priv->job.completed->errmsg = g_strdup(priv->backup->errmsg);
@@ -997,7 +999,8 @@ qemuBackupGetJobInfoStats(virQEMUDriverPtr driver,
                           virDomainObjPtr vm,
                           qemuDomainJobInfoPtr jobInfo)
 {
-    qemuDomainBackupStats *stats = &jobInfo->stats.backup;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
+    qemuDomainBackupStats *stats = &jobInfoPriv->stats.backup;
     qemuDomainObjPrivatePtr priv = vm->privateData;
     qemuMonitorJobInfoPtr *blockjobs = NULL;
     size_t nblockjobs = 0;

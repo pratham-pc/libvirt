@@ -1608,6 +1608,7 @@ qemuProcessHandleSpiceMigrated(qemuMonitorPtr mon G_GNUC_UNUSED,
                                void *opaque G_GNUC_UNUSED)
 {
     qemuDomainObjPrivatePtr priv;
+    qemuDomainJobPrivatePtr jobPriv;
 
     virObjectLock(vm);
 
@@ -1615,12 +1616,13 @@ qemuProcessHandleSpiceMigrated(qemuMonitorPtr mon G_GNUC_UNUSED,
               vm, vm->def->name);
 
     priv = vm->privateData;
+    jobPriv = priv->job.privateData;
     if (priv->job.asyncJob != QEMU_ASYNC_JOB_MIGRATION_OUT) {
         VIR_DEBUG("got SPICE_MIGRATE_COMPLETED event without a migration job");
         goto cleanup;
     }
 
-    priv->job.spiceMigrated = true;
+    jobPriv->spiceMigrated = true;
     virDomainObjBroadcast(vm);
 
  cleanup:
@@ -1636,6 +1638,7 @@ qemuProcessHandleMigrationStatus(qemuMonitorPtr mon G_GNUC_UNUSED,
                                  void *opaque)
 {
     qemuDomainObjPrivatePtr priv;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv;
     virQEMUDriverPtr driver = opaque;
     virObjectEventPtr event = NULL;
     g_autoptr(virQEMUDriverConfig) cfg = virQEMUDriverGetConfig(driver);
@@ -1648,12 +1651,13 @@ qemuProcessHandleMigrationStatus(qemuMonitorPtr mon G_GNUC_UNUSED,
               qemuMonitorMigrationStatusTypeToString(status));
 
     priv = vm->privateData;
+    jobInfoPriv = priv->job.current->privateData;
     if (priv->job.asyncJob == QEMU_ASYNC_JOB_NONE) {
         VIR_DEBUG("got MIGRATION event without a migration job");
         goto cleanup;
     }
 
-    priv->job.current->stats.mig.status = status;
+    jobInfoPriv->stats.mig.status = status;
     virDomainObjBroadcast(vm);
 
     if (status == QEMU_MONITOR_MIGRATION_STATUS_POSTCOPY &&
@@ -1720,6 +1724,8 @@ qemuProcessHandleDumpCompleted(qemuMonitorPtr mon G_GNUC_UNUSED,
                                void *opaque G_GNUC_UNUSED)
 {
     qemuDomainObjPrivatePtr priv;
+    qemuDomainJobPrivatePtr jobPriv;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv;
 
     virObjectLock(vm);
 
@@ -1727,18 +1733,20 @@ qemuProcessHandleDumpCompleted(qemuMonitorPtr mon G_GNUC_UNUSED,
               vm, vm->def->name, stats, NULLSTR(error));
 
     priv = vm->privateData;
+    jobPriv = priv->job.privateData;
+    jobInfoPriv = priv->job.current->privateData;
     if (priv->job.asyncJob == QEMU_ASYNC_JOB_NONE) {
         VIR_DEBUG("got DUMP_COMPLETED event without a dump_completed job");
         goto cleanup;
     }
-    priv->job.dumpCompleted = true;
-    priv->job.current->stats.dump = *stats;
+    jobPriv->dumpCompleted = true;
+    jobInfoPriv->stats.dump = *stats;
     priv->job.error = g_strdup(error);
 
     /* Force error if extracting the DUMP_COMPLETED status failed */
     if (!error && status < 0) {
         priv->job.error = g_strdup(virGetLastErrorMessage());
-        priv->job.current->stats.dump.status = QEMU_MONITOR_DUMP_STATUS_FAILED;
+        jobInfoPriv->stats.dump.status = QEMU_MONITOR_DUMP_STATUS_FAILED;
     }
 
     virDomainObjBroadcast(vm);
@@ -3411,6 +3419,7 @@ qemuProcessRecoverMigrationIn(virQEMUDriverPtr driver,
                               virDomainState state,
                               int reason)
 {
+    qemuDomainJobPrivatePtr jobPriv = job->privateData;
     bool postcopy = (state == VIR_DOMAIN_PAUSED &&
                      reason == VIR_DOMAIN_PAUSED_POSTCOPY_FAILED) ||
                     (state == VIR_DOMAIN_RUNNING &&
@@ -3459,7 +3468,7 @@ qemuProcessRecoverMigrationIn(virQEMUDriverPtr driver,
     }
 
     qemuMigrationParamsReset(driver, vm, QEMU_ASYNC_JOB_NONE,
-                             job->migParams, job->apiFlags);
+                             jobPriv->migParams, job->apiFlags);
     return 0;
 }
 
@@ -3471,6 +3480,7 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
                                int reason,
                                unsigned int *stopFlags)
 {
+    qemuDomainJobPrivatePtr jobPriv = job->privateData;
     bool postcopy = state == VIR_DOMAIN_PAUSED &&
                     (reason == VIR_DOMAIN_PAUSED_POSTCOPY ||
                      reason == VIR_DOMAIN_PAUSED_POSTCOPY_FAILED);
@@ -3554,7 +3564,7 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
     }
 
     qemuMigrationParamsReset(driver, vm, QEMU_ASYNC_JOB_NONE,
-                             job->migParams, job->apiFlags);
+                             jobPriv->migParams, job->apiFlags);
     return 0;
 }
 

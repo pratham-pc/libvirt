@@ -70,6 +70,34 @@ typedef enum {
     QEMU_MIGRATION_DESTINATION = (1 << 1),
 } qemuMigrationParty;
 
+typedef struct _qemuDomainJobPrivate qemuDomainJobPrivate;
+typedef qemuDomainJobPrivate *qemuDomainJobPrivatePtr;
+struct _qemuDomainJobPrivate {
+    bool spiceMigration;                /* we asked for spice migration and we
+                                         * should wait for it to finish */
+    bool spiceMigrated;                 /* spice migration completed */
+    bool dumpCompleted;                 /* dump completed */
+    qemuMigrationParamsPtr migParams;
+};
+
+
+typedef struct _qemuDomainBackupStats qemuDomainBackupStats;
+struct _qemuDomainBackupStats {
+    unsigned long long transferred;
+    unsigned long long total;
+    unsigned long long tmp_used;
+    unsigned long long tmp_total;
+};
+
+typedef struct _qemuDomainJobInfoPrivate qemuDomainJobInfoPrivate;
+typedef qemuDomainJobInfoPrivate *qemuDomainJobInfoPrivatePtr;
+struct _qemuDomainJobInfoPrivate {
+    union {
+            qemuMonitorMigrationStats mig;
+            qemuMonitorDumpStats dump;
+            qemuDomainBackupStats backup;
+        } stats;
+};
 
 virBitmapPtr
 qemuMigrationParamsGetAlwaysOnCaps(qemuMigrationParty party);

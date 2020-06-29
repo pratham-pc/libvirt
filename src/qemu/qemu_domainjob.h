@@ -19,7 +19,6 @@
 #pragma once
 
 #include <glib-object.h>
-#include "qemu_migration_params.h"
 
 #define JOB_MASK(job)                  (job == 0 ? 0 : 1 << (job - 1))
 #define QEMU_JOB_DEFAULT_MASK \
@@ -99,7 +98,6 @@ typedef enum {
     QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP,
 } qemuDomainJobStatsType;
 
-
 typedef struct _qemuDomainMirrorStats qemuDomainMirrorStats;
 typedef qemuDomainMirrorStats *qemuDomainMirrorStatsPtr;
 struct _qemuDomainMirrorStats {
@@ -107,16 +105,22 @@ struct _qemuDomainMirrorStats {
     unsigned long long total;
 };
 
-typedef struct _qemuDomainBackupStats qemuDomainBackupStats;
-struct _qemuDomainBackupStats {
-    unsigned long long transferred;
-    unsigned long long total;
-    unsigned long long tmp_used;
-    unsigned long long tmp_total;
-};
 
 typedef struct _qemuDomainJobInfo qemuDomainJobInfo;
 typedef qemuDomainJobInfo *qemuDomainJobInfoPtr;
+
+typedef void *(*qemuDomainObjJobInfoPrivateAlloc)(void);
+typedef void (*qemuDomainObjJobInfoPrivateFree)(void *);
+typedef void (*qemuDomainObjJobInfoPrivateCopy)(qemuDomainJobInfoPtr,
+                                                qemuDomainJobInfoPtr);
+
+typedef struct _qemuDomainObjPrivateJobInfoCallbacks qemuDomainObjPrivateJobInfoCallbacks;
+struct _qemuDomainObjPrivateJobInfoCallbacks {
+   qemuDomainObjJobInfoPrivateAlloc allocJobInfoPrivate;
+   qemuDomainObjJobInfoPrivateFree freeJobInfoPrivate;
+   qemuDomainObjJobInfoPrivateCopy copyJobInfoPrivate;
+};
+
 struct _qemuDomainJobInfo {
     qemuDomainJobStatus status;
     virDomainJobOperation operation;
@@ -136,15 +140,14 @@ struct _qemuDomainJobInfo {
     bool timeDeltaSet;
     /* Raw values from QEMU */
     qemuDomainJobStatsType statsType;
-    union {
-        qemuMonitorMigrationStats mig;
-        qemuMonitorDumpStats dump;
-        qemuDomainBackupStats backup;
-    } stats;
     qemuDomainMirrorStats mirrorStats;
 
     char *errmsg; /* optional error message for failed completed jobs */
+
+    void *privateData;  /* job specific collection of info */
+    qemuDomainObjPrivateJobInfoCallbacks cb;
 };
+
 
 void
 qemuDomainJobInfoFree(qemuDomainJobInfoPtr info);
@@ -156,6 +159,25 @@ qemuDomainJobInfoCopy(qemuDomainJobInfoPtr info);
 
 typedef struct _qemuDomainJobObj qemuDomainJobObj;
 typedef qemuDomainJobObj *qemuDomainJobObjPtr;
+
+typedef void *(*qemuDomainObjPrivateJobAlloc)(void);
+typedef void (*qemuDomainObjPrivateJobFree)(void *);
+typedef int (*qemuDomainObjPrivateJobFormat)(virBufferPtr,
+                                             virDomainObjPtr,
+                                             qemuDomainJobObjPtr);
+typedef int (*qemuDomainObjPrivateJobParse)(virDomainObjPtr,
+                                            qemuDomainJobObjPtr,
+                                            xmlXPathContextPtr,
+                                            virDomainXMLOptionPtr);
+
+typedef struct _qemuDomainObjPrivateJobCallbacks qemuDomainObjPrivateJobCallbacks;
+struct _qemuDomainObjPrivateJobCallbacks {
+   qemuDomainObjPrivateJobAlloc allocJobPrivate;
+   qemuDomainObjPrivateJobFree freeJobPrivate;
+   qemuDomainObjPrivateJobFormat formatJob;
+   qemuDomainObjPrivateJobParse parseJob;
+};
+
 struct _qemuDomainJobObj {
     virCond cond;                       /* Use to coordinate jobs */
 
@@ -182,14 +204,10 @@ struct _qemuDomainJobObj {
     qemuDomainJobInfoPtr current;       /* async job progress data */
     qemuDomainJobInfoPtr completed;     /* statistics data of a recently completed job */
     bool abortJob;                      /* abort of the job requested */
-    bool spiceMigration;                /* we asked for spice migration and we
-                                         * should wait for it to finish */
-    bool spiceMigrated;                 /* spice migration completed */
     char *error;                        /* job event completion error */
-    bool dumpCompleted;                 /* dump completed */
-
-    qemuMigrationParamsPtr migParams;
     unsigned long apiFlags; /* flags passed to the API which started the async job */
+    void *privateData;                  /* job specific collection of data */
+    struct _qemuDomainObjPrivateJobCallbacks cb;
 };
 
 const char *qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
@@ -267,3 +285,14 @@ void qemuDomainObjFreeJob(qemuDomainJobObjPtr job);
 int qemuDomainObjInitJob(qemuDomainJobObjPtr job);
 
 bool qemuDomainJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob);
+
+int
+qemuDomainObjPrivateXMLFormatJob(virBufferPtr buf,
+                                 virDomainObjPtr vm,
+                                 qemuDomainJobObjPtr jobObj);
+
+int
+qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
+                                qemuDomainJobObjPtr job,
+                                xmlXPathContextPtr ctxt,
+                                virDomainXMLOptionPtr xmlopt);

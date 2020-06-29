@@ -121,22 +121,68 @@ qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
         return -1;
 }
 
+static void
+qemuJobInfoFreePrivateData(qemuDomainJobInfoPrivatePtr priv)
+{
+    g_free(&priv->stats);
+}
+
+static void
+qemuJobInfoFreePrivate(void *opaque)
+{
+    qemuDomainJobInfoPtr jobInfo = (qemuDomainJobInfoPtr) opaque;
+    qemuJobInfoFreePrivateData(jobInfo->privateData);
+}
 
 void
 qemuDomainJobInfoFree(qemuDomainJobInfoPtr info)
 {
+    info->cb.freeJobInfoPrivate(info);
     g_free(info->errmsg);
     g_free(info);
+}
+
+static void *
+qemuDomainJobInfoPrivateAlloc(void)
+{
+    qemuDomainJobInfoPrivatePtr retPriv = g_new0(qemuDomainJobInfoPrivate, 1);
+    return (void *)retPriv;
+}
+
+static void
+qemuDomainJobInfoPrivateCopy(qemuDomainJobInfoPtr src,
+                             qemuDomainJobInfoPtr dest)
+{
+    memcpy(dest->privateData, src->privateData,
+           sizeof(qemuDomainJobInfoPrivate));
+}
+
+static qemuDomainJobInfoPtr
+qemuDomainJobInfoAlloc(void)
+{
+    qemuDomainJobInfoPtr ret = g_new0(qemuDomainJobInfo, 1);
+    ret->cb.allocJobInfoPrivate = &qemuDomainJobInfoPrivateAlloc;
+    ret->cb.freeJobInfoPrivate = &qemuJobInfoFreePrivate;
+    ret->cb.copyJobInfoPrivate = &qemuDomainJobInfoPrivateCopy;
+    ret->privateData = ret->cb.allocJobInfoPrivate();
+    return ret;
+}
+
+static void
+qemuDomainCurrentJobInfoInit(qemuDomainJobObjPtr job)
+{
+    job->current = qemuDomainJobInfoAlloc();
+    job->current->status = QEMU_DOMAIN_JOB_STATUS_ACTIVE;
 }
 
 
 qemuDomainJobInfoPtr
 qemuDomainJobInfoCopy(qemuDomainJobInfoPtr info)
 {
-    qemuDomainJobInfoPtr ret = g_new0(qemuDomainJobInfo, 1);
+    qemuDomainJobInfoPtr ret = qemuDomainJobInfoAlloc();
 
     memcpy(ret, info, sizeof(*info));
-
+    ret->cb.copyJobInfoPrivate(info, ret);
     ret->errmsg = g_strdup(info->errmsg);
 
     return ret;
@@ -166,10 +212,43 @@ qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
 }
 
 
+static void *
+qemuJobAllocPrivate(void)
+{
+    qemuDomainJobPrivatePtr priv;
+    if (VIR_ALLOC(priv) < 0)
+        return NULL;
+    return (void *)priv;
+}
+
+
+static void
+qemuJobFreePrivateData(qemuDomainJobPrivatePtr priv)
+{
+    priv->spiceMigration = false;
+    priv->spiceMigrated = false;
+    priv->dumpCompleted = false;
+    qemuMigrationParamsFree(priv->migParams);
+    priv->migParams = NULL;
+}
+
+static void
+qemuJobFreePrivate(void *opaque)
+{
+    qemuDomainJobObjPtr job = (qemuDomainJobObjPtr) opaque;
+    qemuJobFreePrivateData(job->privateData);
+}
+
+
 int
 qemuDomainObjInitJob(qemuDomainJobObjPtr job)
 {
     memset(job, 0, sizeof(*job));
+    job->cb.allocJobPrivate = &qemuJobAllocPrivate;
+    job->cb.freeJobPrivate = &qemuJobFreePrivate;
+    job->cb.formatJob = &qemuDomainObjPrivateXMLFormatJob;
+    job->cb.parseJob = &qemuDomainObjPrivateXMLParseJob;
+    job->privateData = job->cb.allocJobPrivate();
 
     if (virCondInit(&job->cond) < 0)
         return -1;
@@ -213,13 +292,9 @@ qemuDomainObjResetAsyncJob(qemuDomainJobObjPtr job)
     job->phase = 0;
     job->mask = QEMU_JOB_DEFAULT_MASK;
     job->abortJob = false;
-    job->spiceMigration = false;
-    job->spiceMigrated = false;
-    job->dumpCompleted = false;
     VIR_FREE(job->error);
     g_clear_pointer(&job->current, qemuDomainJobInfoFree);
-    qemuMigrationParamsFree(job->migParams);
-    job->migParams = NULL;
+    job->cb.freeJobPrivate(job);
     job->apiFlags = 0;
 }
 
@@ -235,7 +310,7 @@ qemuDomainObjRestoreJob(virDomainObjPtr obj,
     job->asyncJob = priv->job.asyncJob;
     job->asyncOwner = priv->job.asyncOwner;
     job->phase = priv->job.phase;
-    job->migParams = g_steal_pointer(&priv->job.migParams);
+    job->privateData = g_steal_pointer(&priv->job.privateData);
     job->apiFlags = priv->job.apiFlags;
 
     qemuDomainObjResetJob(&priv->job);
@@ -285,6 +360,7 @@ int
 qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
 {
     unsigned long long now;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
 
     if (!jobInfo->stopped)
         return 0;
@@ -298,8 +374,8 @@ qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
         return 0;
     }
 
-    jobInfo->stats.mig.downtime = now - jobInfo->stopped;
-    jobInfo->stats.mig.downtime_set = true;
+    jobInfoPriv->stats.mig.downtime = now - jobInfo->stopped;
+    jobInfoPriv->stats.mig.downtime_set = true;
     return 0;
 }
 
@@ -334,38 +410,39 @@ int
 qemuDomainJobInfoToInfo(qemuDomainJobInfoPtr jobInfo,
                         virDomainJobInfoPtr info)
 {
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
     info->type = qemuDomainJobStatusToType(jobInfo->status);
     info->timeElapsed = jobInfo->timeElapsed;
 
     switch (jobInfo->statsType) {
     case QEMU_DOMAIN_JOB_STATS_TYPE_MIGRATION:
-        info->memTotal = jobInfo->stats.mig.ram_total;
-        info->memRemaining = jobInfo->stats.mig.ram_remaining;
-        info->memProcessed = jobInfo->stats.mig.ram_transferred;
-        info->fileTotal = jobInfo->stats.mig.disk_total +
+        info->memTotal = jobInfoPriv->stats.mig.ram_total;
+        info->memRemaining = jobInfoPriv->stats.mig.ram_remaining;
+        info->memProcessed = jobInfoPriv->stats.mig.ram_transferred;
+        info->fileTotal = jobInfoPriv->stats.mig.disk_total +
                           jobInfo->mirrorStats.total;
-        info->fileRemaining = jobInfo->stats.mig.disk_remaining +
+        info->fileRemaining = jobInfoPriv->stats.mig.disk_remaining +
                               (jobInfo->mirrorStats.total -
                                jobInfo->mirrorStats.transferred);
-        info->fileProcessed = jobInfo->stats.mig.disk_transferred +
+        info->fileProcessed = jobInfoPriv->stats.mig.disk_transferred +
                               jobInfo->mirrorStats.transferred;
         break;
 
     case QEMU_DOMAIN_JOB_STATS_TYPE_SAVEDUMP:
-        info->memTotal = jobInfo->stats.mig.ram_total;
-        info->memRemaining = jobInfo->stats.mig.ram_remaining;
-        info->memProcessed = jobInfo->stats.mig.ram_transferred;
+        info->memTotal = jobInfoPriv->stats.mig.ram_total;
+        info->memRemaining = jobInfoPriv->stats.mig.ram_remaining;
+        info->memProcessed = jobInfoPriv->stats.mig.ram_transferred;
         break;
 
     case QEMU_DOMAIN_JOB_STATS_TYPE_MEMDUMP:
-        info->memTotal = jobInfo->stats.dump.total;
-        info->memProcessed = jobInfo->stats.dump.completed;
+        info->memTotal = jobInfoPriv->stats.dump.total;
+        info->memProcessed = jobInfoPriv->stats.dump.completed;
         info->memRemaining = info->memTotal - info->memProcessed;
         break;
 
     case QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP:
-        info->fileTotal = jobInfo->stats.backup.total;
-        info->fileProcessed = jobInfo->stats.backup.transferred;
+        info->fileTotal = jobInfoPriv->stats.backup.total;
+        info->fileProcessed = jobInfoPriv->stats.backup.transferred;
         info->fileRemaining = info->fileTotal - info->fileProcessed;
         break;
 
@@ -387,7 +464,8 @@ qemuDomainMigrationJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
                                    virTypedParameterPtr *params,
                                    int *nparams)
 {
-    qemuMonitorMigrationStats *stats = &jobInfo->stats.mig;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
+    qemuMonitorMigrationStats *stats = &jobInfoPriv->stats.mig;
     qemuDomainMirrorStatsPtr mirrorStats = &jobInfo->mirrorStats;
     virTypedParameterPtr par = NULL;
     int maxpar = 0;
@@ -564,7 +642,8 @@ qemuDomainDumpJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
                               virTypedParameterPtr *params,
                               int *nparams)
 {
-    qemuMonitorDumpStats *stats = &jobInfo->stats.dump;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
+    qemuMonitorDumpStats *stats = &jobInfoPriv->stats.dump;
     virTypedParameterPtr par = NULL;
     int maxpar = 0;
     int npar = 0;
@@ -607,7 +686,8 @@ qemuDomainBackupJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
                                 virTypedParameterPtr *params,
                                 int *nparams)
 {
-    qemuDomainBackupStats *stats = &jobInfo->stats.backup;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
+    qemuDomainBackupStats *stats = &jobInfoPriv->stats.backup;
     g_autoptr(virTypedParamList) par = g_new0(virTypedParamList, 1);
 
     if (virTypedParamListAddInt(par, jobInfo->operation,
@@ -782,6 +862,7 @@ qemuDomainObjCanSetJob(qemuDomainJobObjPtr job,
 /* Give up waiting for mutex after 30 seconds */
 #define QEMU_JOB_WAIT_TIME (1000ull * 30)
 
+
 /**
  * qemuDomainObjBeginJobInternal:
  * @driver: qemu driver
@@ -890,8 +971,7 @@ qemuDomainObjBeginJobInternal(virQEMUDriverPtr driver,
                       qemuDomainAsyncJobTypeToString(asyncJob),
                       obj, obj->def->name);
             qemuDomainObjResetAsyncJob(&priv->job);
-            priv->job.current = g_new0(qemuDomainJobInfo, 1);
-            priv->job.current->status = QEMU_DOMAIN_JOB_STATUS_ACTIVE;
+            qemuDomainCurrentJobInfoInit(&priv->job);
             priv->job.asyncJob = asyncJob;
             priv->job.asyncOwner = virThreadSelfID();
             priv->job.asyncOwnerAPI = virThreadJobGet();
@@ -1189,4 +1269,249 @@ qemuDomainObjAbortAsyncJob(virDomainObjPtr obj)
 
     priv->job.abortJob = true;
     virDomainObjBroadcast(obj);
+}
+
+
+static int
+qemuDomainObjPrivateXMLFormatNBDMigrationSource(virBufferPtr buf,
+                                                virStorageSourcePtr src,
+                                                virDomainXMLOptionPtr xmlopt)
+{
+    g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+    g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+
+    virBufferAsprintf(&attrBuf, " type='%s' format='%s'",
+                      virStorageTypeToString(src->type),
+                      virStorageFileFormatTypeToString(src->format));
+
+    if (virDomainDiskSourceFormat(&childBuf, src, "source", 0, false,
+                                  VIR_DOMAIN_DEF_FORMAT_STATUS,
+                                  false, false, xmlopt) < 0)
+        return -1;
+
+    virXMLFormatElement(buf, "migrationSource", &attrBuf, &childBuf);
+
+    return 0;
+}
+
+
+static int
+qemuDomainObjPrivateXMLFormatNBDMigration(virBufferPtr buf,
+                                          virDomainObjPtr vm)
+{
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    size_t i;
+    virDomainDiskDefPtr disk;
+    qemuDomainDiskPrivatePtr diskPriv;
+
+    for (i = 0; i < vm->def->ndisks; i++) {
+        g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+        g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+        disk = vm->def->disks[i];
+        diskPriv = QEMU_DOMAIN_DISK_PRIVATE(disk);
+
+        virBufferAsprintf(&attrBuf, " dev='%s' migrating='%s'",
+                          disk->dst, diskPriv->migrating ? "yes" : "no");
+
+        if (diskPriv->migrSource &&
+            qemuDomainObjPrivateXMLFormatNBDMigrationSource(&childBuf,
+                                                            diskPriv->migrSource,
+                                                            priv->driver->xmlopt) < 0)
+            return -1;
+
+        virXMLFormatElement(buf, "disk", &attrBuf, &childBuf);
+    }
+
+    return 0;
+}
+
+
+int
+qemuDomainObjPrivateXMLFormatJob(virBufferPtr buf,
+                                 virDomainObjPtr vm,
+                                 qemuDomainJobObjPtr jobObj)
+{
+    g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
+    g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
+    qemuDomainJob job = jobObj->active;
+    qemuDomainJobPrivatePtr jobPriv = jobObj->privateData;
+
+    if (!qemuDomainTrackJob(job))
+        job = QEMU_JOB_NONE;
+
+    if (job == QEMU_JOB_NONE &&
+        jobObj->asyncJob == QEMU_ASYNC_JOB_NONE)
+        return 0;
+
+    virBufferAsprintf(&attrBuf, " type='%s' async='%s'",
+                      qemuDomainJobTypeToString(job),
+                      qemuDomainAsyncJobTypeToString(jobObj->asyncJob));
+
+    if (jobObj->phase) {
+        virBufferAsprintf(&attrBuf, " phase='%s'",
+                          qemuDomainAsyncJobPhaseToString(jobObj->asyncJob,
+                                                          jobObj->phase));
+    }
+
+    if (jobObj->asyncJob != QEMU_ASYNC_JOB_NONE)
+        virBufferAsprintf(&attrBuf, " flags='0x%lx'", jobObj->apiFlags);
+
+    if (jobObj->asyncJob == QEMU_ASYNC_JOB_MIGRATION_OUT &&
+        qemuDomainObjPrivateXMLFormatNBDMigration(&childBuf, vm) < 0)
+        return -1;
+
+    if (jobPriv->migParams)
+        qemuMigrationParamsFormat(&childBuf, jobPriv->migParams);
+
+    virXMLFormatElement(buf, "job", &attrBuf, &childBuf);
+
+    return 0;
+}
+
+
+static int
+qemuDomainObjPrivateXMLParseJobNBDSource(xmlNodePtr node,
+                                         xmlXPathContextPtr ctxt,
+                                         virDomainDiskDefPtr disk,
+                                         virDomainXMLOptionPtr xmlopt)
+{
+    VIR_XPATH_NODE_AUTORESTORE(ctxt);
+    qemuDomainDiskPrivatePtr diskPriv = QEMU_DOMAIN_DISK_PRIVATE(disk);
+    g_autofree char *format = NULL;
+    g_autofree char *type = NULL;
+    g_autoptr(virStorageSource) migrSource = NULL;
+    xmlNodePtr sourceNode;
+
+    ctxt->node = node;
+
+    if (!(ctxt->node = virXPathNode("./migrationSource", ctxt)))
+        return 0;
+
+    if (!(type = virXMLPropString(ctxt->node, "type"))) {
+        virReportError(VIR_ERR_XML_ERROR, "%s",
+                       _("missing storage source type"));
+        return -1;
+    }
+
+    if (!(format = virXMLPropString(ctxt->node, "format"))) {
+        virReportError(VIR_ERR_XML_ERROR, "%s",
+                       _("missing storage source format"));
+        return -1;
+    }
+
+    if (!(migrSource = virDomainStorageSourceParseBase(type, format, NULL)))
+        return -1;
+
+    /* newer libvirt uses the <source> subelement instead of formatting the
+     * source directly into <migrationSource> */
+    if ((sourceNode = virXPathNode("./source", ctxt)))
+        ctxt->node = sourceNode;
+
+    if (virDomainStorageSourceParse(ctxt->node, ctxt, migrSource,
+                                    VIR_DOMAIN_DEF_PARSE_STATUS, xmlopt) < 0)
+        return -1;
+
+    diskPriv->migrSource = g_steal_pointer(&migrSource);
+    return 0;
+}
+
+
+static int
+qemuDomainObjPrivateXMLParseJobNBD(virDomainObjPtr vm,
+                                   qemuDomainJobObjPtr job,
+                                   xmlXPathContextPtr ctxt,
+                                   virDomainXMLOptionPtr xmlopt)
+{
+    g_autofree xmlNodePtr *nodes = NULL;
+    size_t i;
+    int n;
+
+    if ((n = virXPathNodeSet("./disk[@migrating='yes']", ctxt, &nodes)) < 0)
+        return -1;
+
+    if (n > 0) {
+        if (job->asyncJob != QEMU_ASYNC_JOB_MIGRATION_OUT) {
+            VIR_WARN("Found disks marked for migration but we were not "
+                     "migrating");
+            n = 0;
+        }
+        for (i = 0; i < n; i++) {
+            virDomainDiskDefPtr disk;
+            g_autofree char *dst = NULL;
+
+            if ((dst = virXMLPropString(nodes[i], "dev")) &&
+                (disk = virDomainDiskByTarget(vm->def, dst))) {
+                QEMU_DOMAIN_DISK_PRIVATE(disk)->migrating = true;
+
+                if (qemuDomainObjPrivateXMLParseJobNBDSource(nodes[i], ctxt,
+                                                             disk,
+                                                             xmlopt) < 0)
+                    return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+int
+qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
+                                qemuDomainJobObjPtr job,
+                                xmlXPathContextPtr ctxt,
+                                virDomainXMLOptionPtr xmlopt)
+{
+    qemuDomainJobPrivatePtr jobPriv = job->privateData;
+    VIR_XPATH_NODE_AUTORESTORE(ctxt);
+    g_autofree char *tmp = NULL;
+
+    if (!(ctxt->node = virXPathNode("./job[1]", ctxt)))
+        return 0;
+
+    if ((tmp = virXPathString("string(@type)", ctxt))) {
+        int type;
+
+        if ((type = qemuDomainJobTypeFromString(tmp)) < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Unknown job type %s"), tmp);
+            return -1;
+        }
+        VIR_FREE(tmp);
+        job->active = type;
+    }
+
+    if ((tmp = virXPathString("string(@async)", ctxt))) {
+        int async;
+
+        if ((async = qemuDomainAsyncJobTypeFromString(tmp)) < 0) {
+            virReportError(VIR_ERR_INTERNAL_ERROR,
+                           _("Unknown async job type %s"), tmp);
+            return -1;
+        }
+        VIR_FREE(tmp);
+        job->asyncJob = async;
+
+        if ((tmp = virXPathString("string(@phase)", ctxt))) {
+            job->phase = qemuDomainAsyncJobPhaseFromString(async, tmp);
+            if (job->phase < 0) {
+                virReportError(VIR_ERR_INTERNAL_ERROR,
+                               _("Unknown job phase %s"), tmp);
+                return -1;
+            }
+            VIR_FREE(tmp);
+        }
+    }
+
+    if (virXPathULongHex("string(@flags)", ctxt, &job->apiFlags) == -2) {
+        virReportError(VIR_ERR_INTERNAL_ERROR, "%s", _("Invalid job flags"));
+        return -1;
+    }
+
+    if (qemuDomainObjPrivateXMLParseJobNBD(vm, job, ctxt, xmlopt) < 0)
+        return -1;
+
+    if (qemuMigrationParamsParse(ctxt, &jobPriv->migParams) < 0)
+        return -1;
+
+    return 0;
 }

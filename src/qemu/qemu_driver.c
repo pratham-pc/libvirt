@@ -3701,14 +3701,16 @@ static int
 qemuDumpWaitForCompletion(virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = priv->job.current->privateData;
 
     VIR_DEBUG("Waiting for dump completion");
-    while (!priv->job.dumpCompleted && !priv->job.abortJob) {
+    while (!jobPriv->dumpCompleted && !priv->job.abortJob) {
         if (virDomainObjWait(vm) < 0)
             return -1;
     }
 
-    if (priv->job.current->stats.dump.status == QEMU_MONITOR_DUMP_STATUS_FAILED) {
+    if (jobInfoPriv->stats.dump.status == QEMU_MONITOR_DUMP_STATUS_FAILED) {
         if (priv->job.error)
             virReportError(VIR_ERR_OPERATION_FAILED,
                            _("memory-only dump failed: %s"),
@@ -13554,6 +13556,7 @@ qemuDomainGetJobInfoDumpStats(virQEMUDriverPtr driver,
                               qemuDomainJobInfoPtr jobInfo)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobInfoPrivatePtr jobInfoPriv = jobInfo->privateData;
     qemuMonitorDumpStats stats = { 0 };
     int rc;
 
@@ -13565,33 +13568,33 @@ qemuDomainGetJobInfoDumpStats(virQEMUDriverPtr driver,
     if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
         return -1;
 
-    jobInfo->stats.dump = stats;
+    jobInfoPriv->stats.dump = stats;
 
     if (qemuDomainJobInfoUpdateTime(jobInfo) < 0)
         return -1;
 
-    switch (jobInfo->stats.dump.status) {
+    switch (jobInfoPriv->stats.dump.status) {
     case QEMU_MONITOR_DUMP_STATUS_NONE:
     case QEMU_MONITOR_DUMP_STATUS_FAILED:
     case QEMU_MONITOR_DUMP_STATUS_LAST:
         virReportError(VIR_ERR_OPERATION_FAILED,
                        _("dump query failed, status=%d"),
-                       jobInfo->stats.dump.status);
+                       jobInfoPriv->stats.dump.status);
         return -1;
         break;
 
     case QEMU_MONITOR_DUMP_STATUS_ACTIVE:
         jobInfo->status = QEMU_DOMAIN_JOB_STATUS_ACTIVE;
         VIR_DEBUG("dump active, bytes written='%llu' remaining='%llu'",
-                  jobInfo->stats.dump.completed,
-                  jobInfo->stats.dump.total -
-                  jobInfo->stats.dump.completed);
+                  jobInfoPriv->stats.dump.completed,
+                  jobInfoPriv->stats.dump.total -
+                  jobInfoPriv->stats.dump.completed);
         break;
 
     case QEMU_MONITOR_DUMP_STATUS_COMPLETED:
         jobInfo->status = QEMU_DOMAIN_JOB_STATUS_COMPLETED;
         VIR_DEBUG("dump completed, bytes written='%llu'",
-                  jobInfo->stats.dump.completed);
+                  jobInfoPriv->stats.dump.completed);
         break;
     }
 
