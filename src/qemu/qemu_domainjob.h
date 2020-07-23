@@ -19,7 +19,6 @@
 #pragma once
 
 #include <glib-object.h>
-#include "qemu_monitor.h"
 
 #define JOB_MASK(job)                  (job == 0 ? 0 : 1 << (job - 1))
 #define QEMU_JOB_DEFAULT_MASK \
@@ -99,61 +98,6 @@ typedef enum {
     QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP,
 } qemuDomainJobStatsType;
 
-
-typedef struct _qemuDomainMirrorStats qemuDomainMirrorStats;
-typedef qemuDomainMirrorStats *qemuDomainMirrorStatsPtr;
-struct _qemuDomainMirrorStats {
-    unsigned long long transferred;
-    unsigned long long total;
-};
-
-typedef struct _qemuDomainBackupStats qemuDomainBackupStats;
-struct _qemuDomainBackupStats {
-    unsigned long long transferred;
-    unsigned long long total;
-    unsigned long long tmp_used;
-    unsigned long long tmp_total;
-};
-
-typedef struct _qemuDomainJobInfo qemuDomainJobInfo;
-typedef qemuDomainJobInfo *qemuDomainJobInfoPtr;
-struct _qemuDomainJobInfo {
-    qemuDomainJobStatus status;
-    virDomainJobOperation operation;
-    unsigned long long started; /* When the async job started */
-    unsigned long long stopped; /* When the domain's CPUs were stopped */
-    unsigned long long sent; /* When the source sent status info to the
-                                destination (only for migrations). */
-    unsigned long long received; /* When the destination host received status
-                                    info from the source (migrations only). */
-    /* Computed values */
-    unsigned long long timeElapsed;
-    long long timeDelta; /* delta = received - sent, i.e., the difference
-                            between the source and the destination time plus
-                            the time between the end of Perform phase on the
-                            source and the beginning of Finish phase on the
-                            destination. */
-    bool timeDeltaSet;
-    /* Raw values from QEMU */
-    qemuDomainJobStatsType statsType;
-    union {
-        qemuMonitorMigrationStats mig;
-        qemuMonitorDumpStats dump;
-        qemuDomainBackupStats backup;
-    } stats;
-    qemuDomainMirrorStats mirrorStats;
-
-    char *errmsg; /* optional error message for failed completed jobs */
-};
-
-void
-qemuDomainJobInfoFree(qemuDomainJobInfoPtr info);
-
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(qemuDomainJobInfo, qemuDomainJobInfoFree);
-
-qemuDomainJobInfoPtr
-qemuDomainJobInfoCopy(qemuDomainJobInfoPtr info);
-
 typedef struct _qemuDomainJobObj qemuDomainJobObj;
 typedef qemuDomainJobObj *qemuDomainJobObjPtr;
 
@@ -164,6 +108,10 @@ typedef int (*qemuDomainObjPrivateJobFormat)(virBufferPtr,
                                              qemuDomainJobObjPtr);
 typedef int (*qemuDomainObjPrivateJobParse)(xmlXPathContextPtr,
                                             qemuDomainJobObjPtr);
+typedef void (*qemuDomainObjJobInfoSetOperation)(qemuDomainJobObjPtr,
+                                                 virDomainJobOperation);
+typedef void (*qemuDomainObjCurrentJobInfoInit)(qemuDomainJobObjPtr,
+                                                unsigned long long);
 
 typedef struct _qemuDomainObjPrivateJobCallbacks qemuDomainObjPrivateJobCallbacks;
 typedef qemuDomainObjPrivateJobCallbacks *qemuDomainObjPrivateJobCallbacksPtr;
@@ -173,6 +121,8 @@ struct _qemuDomainObjPrivateJobCallbacks {
    qemuDomainObjPrivateJobReset resetJobPrivate;
    qemuDomainObjPrivateJobFormat formatJob;
    qemuDomainObjPrivateJobParse parseJob;
+   qemuDomainObjJobInfoSetOperation setJobInfoOperation;
+   qemuDomainObjCurrentJobInfoInit currentJobInfoInit;
 };
 
 struct _qemuDomainJobObj {
@@ -198,8 +148,6 @@ struct _qemuDomainJobObj {
     unsigned long long asyncStarted;    /* When the current async job started */
     int phase;                          /* Job phase (mainly for migrations) */
     unsigned long long mask;            /* Jobs allowed during async job */
-    qemuDomainJobInfoPtr current;       /* async job progress data */
-    qemuDomainJobInfoPtr completed;     /* statistics data of a recently completed job */
     bool abortJob;                      /* abort of the job requested */
     char *error;                        /* job event completion error */
     unsigned long apiFlags; /* flags passed to the API which started the async job */
@@ -212,9 +160,6 @@ const char *qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
                                             int phase);
 int qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
                                       const char *phase);
-
-void qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
-                                     virDomainObjPtr vm);
 
 int qemuDomainObjBeginJob(virQEMUDriverPtr driver,
                           virDomainObjPtr obj,
@@ -261,20 +206,6 @@ void qemuDomainRemoveInactiveJob(virQEMUDriverPtr driver,
 
 void qemuDomainRemoveInactiveJobLocked(virQEMUDriverPtr driver,
                                        virDomainObjPtr vm);
-
-int qemuDomainJobInfoUpdateTime(qemuDomainJobInfoPtr jobInfo)
-    ATTRIBUTE_NONNULL(1);
-int qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
-    ATTRIBUTE_NONNULL(1);
-int qemuDomainJobInfoToInfo(qemuDomainJobInfoPtr jobInfo,
-                            virDomainJobInfoPtr info)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-int qemuDomainJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
-                              int *type,
-                              virTypedParameterPtr *params,
-                              int *nparams)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
-    ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 
 bool qemuDomainTrackJob(qemuDomainJob job);
 
