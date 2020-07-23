@@ -509,12 +509,13 @@ qemuMigrationCookieAddStatistics(qemuMigrationCookiePtr mig,
                                  virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
 
-    if (!priv->job.completed)
+    if (!jobPriv->completed)
         return 0;
 
     g_clear_pointer(&mig->jobInfo, qemuDomainJobInfoFree);
-    mig->jobInfo = qemuDomainJobInfoCopy(priv->job.completed);
+    mig->jobInfo = qemuDomainJobInfoCopy(jobPriv->completed);
 
     mig->flags |= QEMU_MIGRATION_COOKIE_STATS;
 
@@ -1465,6 +1466,7 @@ qemuMigrationEatCookie(virQEMUDriverPtr driver,
                        unsigned int flags)
 {
     g_autoptr(qemuMigrationCookie) mig = NULL;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
 
     /* Parse & validate incoming cookie (if any) */
     if (cookiein && cookieinlen &&
@@ -1513,7 +1515,7 @@ qemuMigrationEatCookie(virQEMUDriverPtr driver,
     }
 
     if (flags & QEMU_MIGRATION_COOKIE_STATS && mig->jobInfo)
-        mig->jobInfo->operation = priv->job.current->operation;
+        mig->jobInfo->operation = jobPriv->current->operation;
 
     return g_steal_pointer(&mig);
 }

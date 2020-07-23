@@ -417,13 +417,11 @@ qemuDomainObjBeginJobInternal(virQEMUDriverPtr driver,
                       qemuDomainAsyncJobTypeToString(asyncJob),
                       obj, obj->def->name);
             qemuDomainObjResetAsyncJob(&priv->job);
-            priv->job.current = g_new0(qemuDomainJobInfo, 1);
-            priv->job.current->status = QEMU_DOMAIN_JOB_STATUS_ACTIVE;
+            priv->job.cb->currentJobInfoInit(&priv->job, now);
             priv->job.asyncJob = asyncJob;
             priv->job.asyncOwner = virThreadSelfID();
             priv->job.asyncOwnerAPI = virThreadJobGet();
             priv->job.asyncStarted = now;
-            priv->job.current->started = now;
         }
     }
 
@@ -589,7 +587,7 @@ int qemuDomainObjBeginAsyncJob(virQEMUDriverPtr driver,
         return -1;
 
     priv = obj->privateData;
-    priv->job.current->operation = operation;
+    priv->job.cb->setJobInfoOperation(&priv->job, operation);
     priv->job.apiFlags = apiFlags;
     return 0;
 }

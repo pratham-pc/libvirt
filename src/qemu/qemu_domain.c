@@ -543,6 +543,8 @@ qemuJobFreePrivate(void *opaque)
         return;
 
     qemuMigrationParamsFree(priv->migParams);
+    g_clear_pointer(&priv->current, qemuDomainJobInfoFree);
+    g_clear_pointer(&priv->completed, qemuDomainJobInfoFree);
     VIR_FREE(priv);
 }
 
@@ -556,6 +558,7 @@ qemuJobResetPrivate(void *opaque)
     priv->spiceMigrated = false;
     priv->dumpCompleted = false;
     qemuMigrationParamsFree(priv->migParams);
+    g_clear_pointer(&priv->current, qemuDomainJobInfoFree);
     priv->migParams = NULL;
 }
 
@@ -630,20 +633,40 @@ qemuDomainFormatJobPrivate(virBufferPtr buf,
     return 0;
 }
 
+static void
+qemuDomainCurrentJobInfoInit(qemuDomainJobObjPtr job,
+                             unsigned long long now)
+{
+    qemuDomainJobPrivatePtr priv = job->privateData;
+    priv->current = g_new0(qemuDomainJobInfo, 1);
+    priv->current->status = QEMU_DOMAIN_JOB_STATUS_ACTIVE;
+    priv->current->started = now;
+
+}
+
+static void
+qemuDomainJobInfoSetOperation(qemuDomainJobObjPtr job,
+                              virDomainJobOperation operation)
+{
+    qemuDomainJobPrivatePtr priv = job->privateData;
+    priv->current->operation = operation;
+}
+
 void
 qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
                                 virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
     virObjectEventPtr event;
     virTypedParameterPtr params = NULL;
     int nparams = 0;
     int type;
 
-    if (!priv->job.completed)
+    if (!jobPriv->completed)
         return;
 
-    if (qemuDomainJobInfoToParams(priv->job.completed, &type,
+    if (qemuDomainJobInfoToParams(jobPriv->completed, &type,
                                   &params, &nparams) < 0) {
         VIR_WARN("Could not get stats for completed job; domain %s",
                  vm->def->name);
@@ -760,6 +783,8 @@ static qemuDomainObjPrivateJobCallbacks qemuPrivateJobCallbacks = {
     .resetJobPrivate = qemuJobResetPrivate,
     .formatJob = qemuDomainFormatJobPrivate,
     .parseJob = qemuDomainParseJobPrivate,
+    .setJobInfoOperation = qemuDomainJobInfoSetOperation,
+    .currentJobInfoInit = qemuDomainCurrentJobInfoInit,
 };
 
 /**

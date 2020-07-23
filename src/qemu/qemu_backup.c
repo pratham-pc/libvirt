@@ -529,20 +529,21 @@ qemuBackupJobTerminate(virDomainObjPtr vm,
 
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
     size_t i;
 
-    qemuDomainJobInfoUpdateTime(priv->job.current);
+    qemuDomainJobInfoUpdateTime(jobPriv->current);
 
-    g_clear_pointer(&priv->job.completed, qemuDomainJobInfoFree);
-    priv->job.completed = qemuDomainJobInfoCopy(priv->job.current);
+    g_clear_pointer(&jobPriv->completed, qemuDomainJobInfoFree);
+    jobPriv->completed = qemuDomainJobInfoCopy(jobPriv->current);
 
-    priv->job.completed->stats.backup.total = priv->backup->push_total;
-    priv->job.completed->stats.backup.transferred = priv->backup->push_transferred;
-    priv->job.completed->stats.backup.tmp_used = priv->backup->pull_tmp_used;
-    priv->job.completed->stats.backup.tmp_total = priv->backup->pull_tmp_total;
+    jobPriv->completed->stats.backup.total = priv->backup->push_total;
+    jobPriv->completed->stats.backup.transferred = priv->backup->push_transferred;
+    jobPriv->completed->stats.backup.tmp_used = priv->backup->pull_tmp_used;
+    jobPriv->completed->stats.backup.tmp_total = priv->backup->pull_tmp_total;
 
-    priv->job.completed->status = jobstatus;
-    priv->job.completed->errmsg = g_strdup(priv->backup->errmsg);
+    jobPriv->completed->status = jobstatus;
+    jobPriv->completed->errmsg = g_strdup(priv->backup->errmsg);
 
     qemuDomainEventEmitJobCompleted(priv->driver, vm);
 
@@ -694,6 +695,7 @@ qemuBackupBegin(virDomainObjPtr vm,
                 unsigned int flags)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
     g_autoptr(virQEMUDriverConfig) cfg = virQEMUDriverGetConfig(priv->driver);
     g_autoptr(virDomainBackupDef) def = NULL;
     g_autofree char *suffix = NULL;
@@ -745,7 +747,7 @@ qemuBackupBegin(virDomainObjPtr vm,
     qemuDomainObjSetAsyncJobMask(vm, (QEMU_JOB_DEFAULT_MASK |
                                       JOB_MASK(QEMU_JOB_SUSPEND) |
                                       JOB_MASK(QEMU_JOB_MODIFY)));
-    priv->job.current->statsType = QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP;
+    jobPriv->current->statsType = QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP;
 
     if (!virDomainObjIsActive(vm)) {
         virReportError(VIR_ERR_OPERATION_UNSUPPORTED, "%s",
