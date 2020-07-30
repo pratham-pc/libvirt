@@ -152,6 +152,9 @@ struct _qemuDomainJobObj {
     char *error;                        /* job event completion error */
     unsigned long apiFlags; /* flags passed to the API which started the async job */
 
+    int jobs_queued;
+    unsigned int maxQueuedJobs;
+
     void *privateData;                  /* job specific collection of data */
     qemuDomainObjPrivateJobCallbacksPtr cb;
 };
@@ -213,7 +216,8 @@ void qemuDomainObjFreeJob(qemuDomainJobObjPtr job);
 
 int
 qemuDomainObjInitJob(qemuDomainJobObjPtr job,
-                     qemuDomainObjPrivateJobCallbacksPtr cb);
+                     qemuDomainObjPrivateJobCallbacksPtr cb,
+                     unsigned int maxQueuedJobs);
 
 bool qemuDomainJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob);
 

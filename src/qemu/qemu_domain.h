@@ -161,8 +161,6 @@ struct _qemuDomainObjPrivate {
     bool pausedShutdown;
     virTristateBool allowReboot;
 
-    int jobs_queued;
-
     unsigned long migMaxBandwidth;
     char *origname;
     int nbdPort; /* Port used for migration with NBD */

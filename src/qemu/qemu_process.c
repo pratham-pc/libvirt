@@ -3587,7 +3587,9 @@ qemuProcessRecoverJob(virQEMUDriverPtr driver,
                       unsigned int *stopFlags)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    qemuDomainJobPrivatePtr jobPriv = priv->job.privateData;
+    qemuDomainJobObjPtr jobObj = &priv->job;
+    qemuDomainJobPrivatePtr jobPriv = jobObj->privateData;
+
     virDomainState state;
     int reason;
     unsigned long long now;
@@ -3644,10 +3646,10 @@ qemuProcessRecoverJob(virQEMUDriverPtr driver,
         ignore_value(virTimeMillisNow(&now));
 
         /* Restore the config of the async job which is not persisted */
-        priv->jobs_queued++;
-        priv->job.asyncJob = QEMU_ASYNC_JOB_BACKUP;
-        priv->job.asyncOwnerAPI = virThreadJobGet();
-        priv->job.asyncStarted = now;
+        jobObj->jobs_queued++;
+        jobObj->asyncJob = QEMU_ASYNC_JOB_BACKUP;
+        jobObj->asyncOwnerAPI = virThreadJobGet();
+        jobObj->asyncStarted = now;
 
         qemuDomainObjSetAsyncJobMask(vm, (QEMU_JOB_DEFAULT_MASK |
                                           JOB_MASK(QEMU_JOB_SUSPEND) |
