@@ -491,8 +491,7 @@ qemuBlockJobRefreshJobsFindInactive(const void *payload,
 
 
 int
-qemuBlockJobRefreshJobs(virQEMUDriverPtr driver,
-                        virDomainObjPtr vm)
+qemuBlockJobRefreshJobs(virDomainObjPtr vm)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     qemuMonitorJobInfoPtr *jobinfo = NULL;
@@ -503,11 +502,11 @@ qemuBlockJobRefreshJobs(virQEMUDriverPtr driver,
     int ret = -1;
     int rc;
 
-    qemuDomainObjEnterMonitor(driver, vm);
+    qemuDomainObjEnterMonitor(vm);
 
     rc = qemuMonitorGetJobInfo(priv->mon, &jobinfo, &njobinfo);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto cleanup;
 
     for (i = 0; i < njobinfo; i++) {
@@ -524,13 +523,13 @@ qemuBlockJobRefreshJobs(virQEMUDriverPtr driver,
 
             qemuBlockJobMarkBroken(job);
 
-            qemuDomainObjEnterMonitor(driver, vm);
+            qemuDomainObjEnterMonitor(vm);
 
             rc = qemuMonitorJobCancel(priv->mon, job->name, true);
             if (rc == -1 && jobinfo[i]->status == QEMU_MONITOR_JOB_STATUS_CONCLUDED)
                 VIR_WARN("can't cancel job '%s' with invalid data", job->name);
 
-            if (qemuDomainObjExitMonitor(driver, vm) < 0)
+            if (qemuDomainObjExitMonitor(vm) < 0)
                 goto cleanup;
 
             if (rc < 0)
@@ -757,7 +756,7 @@ qemuBlockJobEventProcessLegacyCompleted(virQEMUDriverPtr driver,
     disk->src->id = 0;
     virStorageSourceBackingStoreClear(disk->src);
     ignore_value(qemuDomainDetermineDiskChain(driver, vm, disk, NULL, true));
-    ignore_value(qemuBlockNodeNamesDetect(driver, vm, asyncJob));
+    ignore_value(qemuBlockNodeNamesDetect(vm, asyncJob));
     qemuBlockJobUnregister(job, vm);
     qemuDomainSaveConfig(vm);
 }
@@ -843,11 +842,11 @@ qemuBlockJobEventProcessConcludedRemoveChain(virQEMUDriverPtr driver,
     if (!(data = qemuBlockStorageSourceChainDetachPrepareBlockdev(chain)))
         return;
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return;
 
     qemuBlockStorageSourceChainDetach(qemuDomainGetMonitor(vm), data);
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return;
 
     qemuDomainStorageSourceChainAccessRevoke(driver, vm, chain);
@@ -959,12 +958,12 @@ qemuBlockJobProcessEventCompletedPullBitmaps(virDomainObjPtr vm,
     if (!actions)
         return 0;
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     qemuMonitorTransaction(priv->mon, &actions);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return -1;
 
     return 0;
@@ -1123,12 +1122,12 @@ qemuBlockJobProcessEventCompletedCommitBitmaps(virDomainObjPtr vm,
             return -1;
     }
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     qemuMonitorTransaction(priv->mon, &actions);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return -1;
 
     if (!active) {
@@ -1346,12 +1345,12 @@ qemuBlockJobProcessEventCompletedCopyBitmaps(virDomainObjPtr vm,
     if (!actions)
         return 0;
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     qemuMonitorTransaction(priv->mon, &actions);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return -1;
 
     return 0;
@@ -1431,12 +1430,12 @@ qemuBlockJobProcessEventFailedActiveCommit(virQEMUDriverPtr driver,
     ignore_value(qemuMonitorTransactionBitmapRemove(actions, disk->mirror->nodeformat,
                                                     "libvirt-tmp-activewrite"));
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return;
 
     qemuMonitorTransaction(priv->mon, &actions);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return;
 
     /* Ideally, we would make the backing chain read only again (yes, SELinux
@@ -1480,12 +1479,12 @@ qemuBlockJobProcessEventConcludedCreate(virQEMUDriverPtr driver,
         VIR_FREE(backend->encryptsecretAlias);
     }
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return;
 
     qemuBlockStorageSourceAttachRollback(qemuDomainGetMonitor(vm), backend);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return;
 
     qemuDomainStorageSourceAccessRevoke(driver, vm, job->data.create.src);
@@ -1520,7 +1519,7 @@ qemuBlockJobProcessEventConcludedBackup(virQEMUDriverPtr driver,
             return;
     }
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return;
 
     if (backend)
@@ -1529,7 +1528,7 @@ qemuBlockJobProcessEventConcludedBackup(virQEMUDriverPtr driver,
     if (actions)
         qemuMonitorTransaction(qemuDomainGetMonitor(vm), &actions);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return;
 
     if (job->data.backup.store)
@@ -1610,7 +1609,7 @@ qemuBlockJobEventProcessConcluded(qemuBlockJobDataPtr job,
     unsigned long long progressCurrent = 0;
     unsigned long long progressTotal = 0;
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         goto cleanup;
 
     /* we need to fetch the error state as the event does not propagate it */
@@ -1643,7 +1642,7 @@ qemuBlockJobEventProcessConcluded(qemuBlockJobDataPtr job,
     /* dismiss job in qemu */
     ignore_value(qemuMonitorJobDismiss(qemuDomainGetMonitor(vm), job->name));
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         goto cleanup;
 
     if ((job->newstate == QEMU_BLOCKJOB_STATE_COMPLETED ||

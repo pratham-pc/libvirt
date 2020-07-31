@@ -46,8 +46,7 @@ qemuBlockNodeNameGetBackingChain(virJSONValuePtr namednodesdata,
                                  virJSONValuePtr blockstats);
 
 int
-qemuBlockNodeNamesDetect(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuBlockNodeNamesDetect(virDomainObjPtr vm,
                          qemuDomainAsyncJob asyncJob);
 
 virHashTablePtr
@@ -140,8 +139,7 @@ qemuBlockStorageSourceAttachRollback(qemuMonitorPtr mon,
                                      qemuBlockStorageSourceAttachDataPtr data);
 
 int
-qemuBlockStorageSourceDetachOneBlockdev(virQEMUDriverPtr driver,
-                                        virDomainObjPtr vm,
+qemuBlockStorageSourceDetachOneBlockdev(virDomainObjPtr vm,
                                         qemuDomainAsyncJob asyncJob,
                                         virStorageSourcePtr src);
 
