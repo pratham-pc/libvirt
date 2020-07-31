@@ -66,12 +66,10 @@ qemuProcessIncomingDefPtr qemuProcessIncomingDefNew(virQEMUCapsPtr qemuCaps,
                                                     const char *path);
 void qemuProcessIncomingDefFree(qemuProcessIncomingDefPtr inc);
 
-int qemuProcessBeginJob(virQEMUDriverPtr driver,
-                        virDomainObjPtr vm,
+int qemuProcessBeginJob(virDomainObjPtr vm,
                         virDomainJobOperation operation,
                         unsigned long apiFlags);
-void qemuProcessEndJob(virQEMUDriverPtr driver,
-                       virDomainObjPtr vm);
+void qemuProcessEndJob(virDomainObjPtr vm);
 
 typedef enum {
     VIR_QEMU_PROCESS_START_COLD         = 1 << 0,
@@ -145,8 +143,7 @@ typedef enum {
     VIR_QEMU_PROCESS_STOP_NO_RELABEL    = 1 << 1,
 } qemuProcessStopFlags;
 
-int qemuProcessBeginStopJob(virQEMUDriverPtr driver,
-                            virDomainObjPtr vm,
+int qemuProcessBeginStopJob(virDomainObjPtr vm,
                             qemuDomainJob job,
                             bool forceKill);
 void qemuProcessStop(virQEMUDriverPtr driver,
@@ -195,12 +192,10 @@ int qemuRefreshVirtioChannelState(virQEMUDriverPtr driver,
                                   virDomainObjPtr vm,
                                   qemuDomainAsyncJob asyncJob);
 
-int qemuProcessRefreshBalloonState(virQEMUDriverPtr driver,
-                                   virDomainObjPtr vm,
+int qemuProcessRefreshBalloonState(virDomainObjPtr vm,
                                    int asyncJob);
 
-int qemuProcessRefreshDisks(virQEMUDriverPtr driver,
-                            virDomainObjPtr vm,
+int qemuProcessRefreshDisks(virDomainObjPtr vm,
                             qemuDomainAsyncJob asyncJob);
 
 int qemuProcessStartManagedPRDaemon(virDomainObjPtr vm) G_GNUC_NO_INLINE;

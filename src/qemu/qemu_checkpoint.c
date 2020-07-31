@@ -198,9 +198,9 @@ qemuCheckpointDiscardBitmaps(virDomainObjPtr vm,
         relabelimages = g_slist_prepend(relabelimages, src);
     }
 
-    qemuDomainObjEnterMonitor(driver, vm);
+    qemuDomainObjEnterMonitor(vm);
     rc = qemuMonitorTransaction(priv->mon, &actions);
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return -1;
 
  relabel:
@@ -457,9 +457,9 @@ qemuCheckpointCreate(virQEMUDriverPtr driver,
     if (qemuCheckpointCreateCommon(driver, vm, def, &actions, &chk) < 0)
         return NULL;
 
-    qemuDomainObjEnterMonitor(driver, vm);
+    qemuDomainObjEnterMonitor(vm);
     rc = qemuMonitorTransaction(qemuDomainGetMonitor(vm), &actions);
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0) {
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0) {
         qemuCheckpointRollbackMetadata(vm, chk);
         return NULL;
     }
@@ -539,7 +539,7 @@ qemuCheckpointCreateXML(virDomainPtr domain,
     /* Unlike snapshots, the RNG schema already ensured a sane filename. */
 
     /* We are going to modify the domain below. */
-    if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
         return NULL;
 
     if (redefine) {
@@ -561,7 +561,7 @@ qemuCheckpointCreateXML(virDomainPtr domain,
     checkpoint = virGetDomainCheckpoint(domain, chk->def->name);
 
  endjob:
-    qemuDomainObjEndJob(driver, vm);
+    qemuDomainObjEndJob(vm);
 
     return checkpoint;
 }
@@ -578,7 +578,6 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
                                    virDomainCheckpointDefPtr chkdef)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    virQEMUDriverPtr driver = priv->driver;
     g_autoptr(virHashTable) blockNamedNodeData = NULL;
     g_autofree struct qemuCheckpointDiskMap *diskmap = NULL;
     g_autoptr(virJSONValue) recoveractions = NULL;
@@ -589,7 +588,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     size_t i;
     int ret = -1;
 
-    if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
         return -1;
 
     if (virDomainObjCheckActive(vm) < 0)
@@ -659,7 +658,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
             goto endjob;
     }
 
-    qemuDomainObjEnterMonitor(driver, vm);
+    qemuDomainObjEnterMonitor(vm);
 
     if (rc == 0 && recoveractions)
         rc = qemuMonitorTransaction(priv->mon, &recoveractions);
@@ -667,7 +666,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     if (rc == 0)
         rc = qemuMonitorTransaction(priv->mon, &mergeactions);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto endjob;
 
     /* now do a final refresh */
@@ -675,11 +674,11 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     if (!(blockNamedNodeData = qemuBlockGetNamedNodeData(vm, QEMU_ASYNC_JOB_NONE)))
         goto endjob;
 
-    qemuDomainObjEnterMonitor(driver, vm);
+    qemuDomainObjEnterMonitor(vm);
 
     rc = qemuMonitorTransaction(priv->mon, &cleanupactions);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto endjob;
 
     /* update disks */
@@ -698,7 +697,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     ret = 0;
 
  endjob:
-    qemuDomainObjEndJob(driver, vm);
+    qemuDomainObjEndJob(vm);
     return ret;
 }
 
@@ -782,7 +781,7 @@ qemuCheckpointDelete(virDomainObjPtr vm,
                   VIR_DOMAIN_CHECKPOINT_DELETE_METADATA_ONLY |
                   VIR_DOMAIN_CHECKPOINT_DELETE_CHILDREN_ONLY, -1);
 
-    if (qemuDomainObjBeginJob(driver, vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
         return -1;
 
     if (!metadata_only) {
@@ -850,6 +849,6 @@ qemuCheckpointDelete(virDomainObjPtr vm,
     }
 
  endjob:
-    qemuDomainObjEndJob(driver, vm);
+    qemuDomainObjEndJob(vm);
     return ret;
 }

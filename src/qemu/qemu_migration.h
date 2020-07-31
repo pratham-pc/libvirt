@@ -195,12 +195,10 @@ qemuMigrationSrcToFile(virQEMUDriverPtr driver,
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) G_GNUC_WARN_UNUSED_RESULT;
 
 int
-qemuMigrationSrcCancel(virQEMUDriverPtr driver,
-                       virDomainObjPtr vm);
+qemuMigrationSrcCancel(virDomainObjPtr vm);
 
 int
-qemuMigrationAnyFetchStats(virQEMUDriverPtr driver,
-                           virDomainObjPtr vm,
+qemuMigrationAnyFetchStats(virDomainObjPtr vm,
                            qemuDomainAsyncJob asyncJob,
                            qemuDomainJobInfoPtr jobInfo,
                            char **error);
@@ -226,8 +224,7 @@ qemuMigrationDstGetURI(const char *migrateFrom,
                        int migrateFd);
 
 int
-qemuMigrationDstRun(virQEMUDriverPtr driver,
-                    virDomainObjPtr vm,
+qemuMigrationDstRun(virDomainObjPtr vm,
                     const char *uri,
                     qemuDomainAsyncJob asyncJob);
 
@@ -236,7 +233,6 @@ qemuMigrationAnyPostcopyFailed(virQEMUDriverPtr driver,
                             virDomainObjPtr vm);
 
 int
-qemuMigrationSrcFetchMirrorStats(virQEMUDriverPtr driver,
-                                 virDomainObjPtr vm,
+qemuMigrationSrcFetchMirrorStats(virDomainObjPtr vm,
                                  qemuDomainAsyncJob asyncJob,
                                  qemuDomainJobInfoPtr jobInfo);

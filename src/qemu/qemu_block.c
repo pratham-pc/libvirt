@@ -320,8 +320,7 @@ qemuBlockDiskDetectNodes(virDomainDiskDefPtr disk,
 
 
 int
-qemuBlockNodeNamesDetect(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuBlockNodeNamesDetect(virDomainObjPtr vm,
                          qemuDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
@@ -334,13 +333,13 @@ qemuBlockNodeNamesDetect(virQEMUDriverPtr driver,
     if (!virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_QUERY_NAMED_BLOCK_NODES))
         return 0;
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     data = qemuMonitorQueryNamedBlockNodes(qemuDomainGetMonitor(vm));
     blockstats = qemuMonitorQueryBlockstats(qemuDomainGetMonitor(vm));
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || !data || !blockstats)
+    if (qemuDomainObjExitMonitor(vm) < 0 || !data || !blockstats)
         return -1;
 
     if (!(disktable = qemuBlockNodeNameGetBackingChain(data, blockstats)))
@@ -1976,7 +1975,6 @@ qemuBlockStorageSourceChainDetach(qemuMonitorPtr mon,
 
 /**
  * qemuBlockStorageSourceDetachOneBlockdev:
- * @driver: qemu driver object
  * @vm: domain object
  * @asyncJob: currently running async job
  * @src: storage source to detach
@@ -1986,14 +1984,13 @@ qemuBlockStorageSourceChainDetach(qemuMonitorPtr mon,
  * monitor internally.
  */
 int
-qemuBlockStorageSourceDetachOneBlockdev(virQEMUDriverPtr driver,
-                                        virDomainObjPtr vm,
+qemuBlockStorageSourceDetachOneBlockdev(virDomainObjPtr vm,
                                         qemuDomainAsyncJob asyncJob,
                                         virStorageSourcePtr src)
 {
     int ret;
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     ret = qemuMonitorBlockdevDel(qemuDomainGetMonitor(vm), src->nodeformat);
@@ -2001,7 +1998,7 @@ qemuBlockStorageSourceDetachOneBlockdev(virQEMUDriverPtr driver,
     if (ret == 0)
         ret = qemuMonitorBlockdevDel(qemuDomainGetMonitor(vm), src->nodestorage);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0)
         return -1;
 
     return ret;
@@ -2561,13 +2558,13 @@ qemuBlockStorageSourceCreateGeneric(virDomainObjPtr vm,
 
     qemuBlockJobSyncBegin(job);
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         goto cleanup;
 
     rc = qemuMonitorBlockdevCreate(priv->mon, job->name, props);
     props = NULL;
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto cleanup;
 
     qemuBlockJobStarted(job, vm);
@@ -2708,18 +2705,18 @@ qemuBlockStorageSourceCreate(virDomainObjPtr vm,
                                            false, true) < 0)
         return -1;
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         goto cleanup;
 
     rc = qemuBlockStorageSourceAttachApplyStorageDeps(priv->mon, data);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto cleanup;
 
     if (qemuBlockStorageSourceCreateStorage(vm, src, chain, asyncJob) < 0)
         goto cleanup;
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         goto cleanup;
 
     rc = qemuBlockStorageSourceAttachApplyStorage(priv->mon, data);
@@ -2727,7 +2724,7 @@ qemuBlockStorageSourceCreate(virDomainObjPtr vm,
     if (rc == 0)
         rc = qemuBlockStorageSourceAttachApplyFormatDeps(priv->mon, data);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto cleanup;
 
     if (qemuBlockStorageSourceCreateFormat(vm, src, backingStore, chain,
@@ -2740,12 +2737,12 @@ qemuBlockStorageSourceCreate(virDomainObjPtr vm,
                                            false, true) < 0)
         goto cleanup;
 
-    if (qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         goto cleanup;
 
     rc = qemuBlockStorageSourceAttachApplyFormat(priv->mon, data);
 
-    if (qemuDomainObjExitMonitor(priv->driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         goto cleanup;
 
     ret = 0;
@@ -2753,10 +2750,10 @@ qemuBlockStorageSourceCreate(virDomainObjPtr vm,
  cleanup:
     if (ret < 0 &&
         virDomainObjIsActive(vm) &&
-        qemuDomainObjEnterMonitorAsync(priv->driver, vm, asyncJob) == 0) {
+        qemuDomainObjEnterMonitorAsync(vm, asyncJob) == 0) {
 
         qemuBlockStorageSourceAttachRollback(priv->mon, data);
-        ignore_value(qemuDomainObjExitMonitor(priv->driver, vm));
+        ignore_value(qemuDomainObjExitMonitor(vm));
     }
 
     return ret;
@@ -2861,17 +2858,16 @@ qemuBlockGetNamedNodeData(virDomainObjPtr vm,
                           qemuDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    virQEMUDriverPtr driver = priv->driver;
     g_autoptr(virHashTable) blockNamedNodeData = NULL;
     bool supports_flat = virQEMUCapsGet(priv->qemuCaps,
                                         QEMU_CAPS_QMP_QUERY_NAMED_BLOCK_NODES_FLAT);
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return NULL;
 
     blockNamedNodeData = qemuMonitorBlockGetNamedNodeData(priv->mon, supports_flat);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || !blockNamedNodeData)
+    if (qemuDomainObjExitMonitor(vm) < 0 || !blockNamedNodeData)
         return NULL;
 
     return g_steal_pointer(&blockNamedNodeData);
@@ -3185,7 +3181,6 @@ qemuBlockReopenFormat(virDomainObjPtr vm,
                       qemuDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
-    virQEMUDriverPtr driver = priv->driver;
     g_autoptr(virJSONValue) reopenprops = NULL;
     int rc;
 
@@ -3200,12 +3195,12 @@ qemuBlockReopenFormat(virDomainObjPtr vm,
     if (!(reopenprops = qemuBlockStorageSourceGetBlockdevProps(src, src->backingStore)))
         return -1;
 
-    if (qemuDomainObjEnterMonitorAsync(driver, vm, asyncJob) < 0)
+    if (qemuDomainObjEnterMonitorAsync(vm, asyncJob) < 0)
         return -1;
 
     rc = qemuMonitorBlockdevReopen(priv->mon, &reopenprops);
 
-    if (qemuDomainObjExitMonitor(driver, vm) < 0 || rc < 0)
+    if (qemuDomainObjExitMonitor(vm) < 0 || rc < 0)
         return -1;
 
     return 0;

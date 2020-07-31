@@ -95,8 +95,7 @@ qemuMigrationParamsFree(qemuMigrationParamsPtr migParams);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(qemuMigrationParams, qemuMigrationParamsFree);
 
 int
-qemuMigrationParamsApply(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuMigrationParamsApply(virDomainObjPtr vm,
                          int asyncJob,
                          qemuMigrationParamsPtr migParams);
 
@@ -114,8 +113,7 @@ qemuMigrationParamsDisableTLS(virDomainObjPtr vm,
                               qemuMigrationParamsPtr migParams);
 
 int
-qemuMigrationParamsFetch(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuMigrationParamsFetch(virDomainObjPtr vm,
                          int asyncJob,
                          qemuMigrationParamsPtr *migParams);
 
@@ -130,15 +128,13 @@ qemuMigrationParamsGetULL(qemuMigrationParamsPtr migParams,
                           unsigned long long *value);
 
 int
-qemuMigrationParamsCheck(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuMigrationParamsCheck(virDomainObjPtr vm,
                          int asyncJob,
                          qemuMigrationParamsPtr migParams,
                          virBitmapPtr remoteCaps);
 
 void
-qemuMigrationParamsReset(virQEMUDriverPtr driver,
-                         virDomainObjPtr vm,
+qemuMigrationParamsReset(virDomainObjPtr vm,
                          int asyncJob,
                          qemuMigrationParamsPtr origParams,
                          unsigned long apiFlags);
@@ -152,8 +148,7 @@ qemuMigrationParamsParse(xmlXPathContextPtr ctxt,
                          qemuMigrationParamsPtr *migParams);
 
 int
-qemuMigrationCapsCheck(virQEMUDriverPtr driver,
-                       virDomainObjPtr vm,
+qemuMigrationCapsCheck(virDomainObjPtr vm,
                        int asyncJob);
 
 bool

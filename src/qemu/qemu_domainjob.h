@@ -104,6 +104,7 @@ typedef qemuDomainJobObj *qemuDomainJobObjPtr;
 typedef void *(*qemuDomainObjPrivateJobAlloc)(void);
 typedef void (*qemuDomainObjPrivateJobFree)(void *);
 typedef void (*qemuDomainObjPrivateJobReset)(void *);
+typedef void (*qemuDomainObjPrivateSaveStatus)(virDomainObjPtr);
 typedef int (*qemuDomainObjPrivateJobFormat)(virBufferPtr,
                                              qemuDomainJobObjPtr,
                                              virDomainObjPtr);
@@ -137,6 +138,9 @@ struct _qemuDomainJobPrivateJobCallbacks {
 typedef struct _qemuDomainJobPrivateCallbacks qemuDomainJobPrivateCallbacks;
 typedef qemuDomainJobPrivateCallbacks *qemuDomainJobPrivateCallbacksPtr;
 struct _qemuDomainJobPrivateCallbacks {
+    /* generic callbacks that we can't really categorize */
+    qemuDomainObjPrivateSaveStatus saveStatus;
+
     /* Job related callbacks */
     qemuDomainJobPrivateJobCallbacksPtr jobcb;
 };
@@ -177,44 +181,35 @@ const char *qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
 int qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
                                       const char *phase);
 
-int qemuDomainObjBeginJob(virQEMUDriverPtr driver,
-                          virDomainObjPtr obj,
+int qemuDomainObjBeginJob(virDomainObjPtr obj,
                           qemuDomainJob job)
     G_GNUC_WARN_UNUSED_RESULT;
-int qemuDomainObjBeginAgentJob(virQEMUDriverPtr driver,
-                               virDomainObjPtr obj,
+int qemuDomainObjBeginAgentJob(virDomainObjPtr obj,
                                qemuDomainAgentJob agentJob)
     G_GNUC_WARN_UNUSED_RESULT;
-int qemuDomainObjBeginAsyncJob(virQEMUDriverPtr driver,
-                               virDomainObjPtr obj,
+int qemuDomainObjBeginAsyncJob(virDomainObjPtr obj,
                                qemuDomainAsyncJob asyncJob,
                                virDomainJobOperation operation,
                                unsigned long apiFlags)
     G_GNUC_WARN_UNUSED_RESULT;
-int qemuDomainObjBeginNestedJob(virQEMUDriverPtr driver,
-                                virDomainObjPtr obj,
+int qemuDomainObjBeginNestedJob(virDomainObjPtr obj,
                                 qemuDomainAsyncJob asyncJob)
     G_GNUC_WARN_UNUSED_RESULT;
-int qemuDomainObjBeginJobNowait(virQEMUDriverPtr driver,
-                                virDomainObjPtr obj,
+int qemuDomainObjBeginJobNowait(virDomainObjPtr obj,
                                 qemuDomainJob job)
     G_GNUC_WARN_UNUSED_RESULT;
 
-void qemuDomainObjEndJob(virQEMUDriverPtr driver,
-                         virDomainObjPtr obj);
+void qemuDomainObjEndJob(virDomainObjPtr obj);
 void qemuDomainObjEndAgentJob(virDomainObjPtr obj);
-void qemuDomainObjEndAsyncJob(virQEMUDriverPtr driver,
-                              virDomainObjPtr obj);
+void qemuDomainObjEndAsyncJob(virDomainObjPtr obj);
 void qemuDomainObjAbortAsyncJob(virDomainObjPtr obj);
-void qemuDomainObjSetJobPhase(virQEMUDriverPtr driver,
-                              virDomainObjPtr obj,
+void qemuDomainObjSetJobPhase(virDomainObjPtr obj,
                               int phase);
 void qemuDomainObjSetAsyncJobMask(virDomainObjPtr obj,
                                   unsigned long long allowedJobs);
 int qemuDomainObjRestoreJob(virDomainObjPtr obj,
                             qemuDomainJobObjPtr job);
-void qemuDomainObjDiscardAsyncJob(virQEMUDriverPtr driver,
-                                  virDomainObjPtr obj);
+void qemuDomainObjDiscardAsyncJob(virDomainObjPtr obj);
 void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
 
 bool qemuDomainTrackJob(qemuDomainJob job);

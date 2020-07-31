@@ -457,7 +457,7 @@ testQemuHotplugCpuPrepare(const char *test,
     priv->mon = qemuMonitorTestGetMonitor(data->mon);
     virObjectUnlock(priv->mon);
 
-    if (qemuDomainRefreshVcpuInfo(&driver, data->vm, 0, false) < 0)
+    if (qemuDomainRefreshVcpuInfo(data->vm, 0, false) < 0)
         goto error;
 
     return data;
