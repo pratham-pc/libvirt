@@ -2005,7 +2005,7 @@ qemuMigrationSrcCleanup(virDomainObjPtr vm,
     switch ((qemuMigrationJobPhase) priv->job.phase) {
     case QEMU_MIGRATION_PHASE_BEGIN3:
         /* just forget we were about to migrate */
-        qemuDomainObjDiscardAsyncJob(vm);
+        qemuDomainObjDiscardAsyncJob(vm, &priv->job);
         break;
 
     case QEMU_MIGRATION_PHASE_PERFORM3_DONE:
@@ -2015,7 +2015,7 @@ qemuMigrationSrcCleanup(virDomainObjPtr vm,
         qemuMigrationParamsReset(vm, QEMU_ASYNC_JOB_MIGRATION_OUT,
                                  jobPriv->migParams, priv->job.apiFlags);
         /* clear the job and let higher levels decide what to do */
-        qemuDomainObjDiscardAsyncJob(vm);
+        qemuDomainObjDiscardAsyncJob(vm, &priv->job);
         break;
 
     case QEMU_MIGRATION_PHASE_PERFORM3:
@@ -2204,6 +2204,7 @@ qemuMigrationSrcBegin(virConnectPtr conn,
                       unsigned long flags)
 {
     virQEMUDriverPtr driver = conn->privateData;
+    qemuDomainObjPrivatePtr priv = vm->privateData;
     char *xml = NULL;
     qemuDomainAsyncJob asyncJob;
 
@@ -2213,7 +2214,7 @@ qemuMigrationSrcBegin(virConnectPtr conn,
             goto cleanup;
         asyncJob = QEMU_ASYNC_JOB_MIGRATION_OUT;
     } else {
-        if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
+        if (qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) < 0)
             goto cleanup;
         asyncJob = QEMU_ASYNC_JOB_NONE;
     }
@@ -2258,7 +2259,7 @@ qemuMigrationSrcBegin(virConnectPtr conn,
     if (flags & VIR_MIGRATE_CHANGE_PROTECTION)
         qemuMigrationJobFinish(vm);
     else
-        qemuDomainObjEndJob(vm);
+        qemuDomainObjEndJob(vm, &priv->job);
     goto cleanup;
 }
 
@@ -2283,7 +2284,7 @@ qemuMigrationDstPrepareCleanup(virQEMUDriverPtr driver,
 
     if (!qemuMigrationJobIsActive(vm, QEMU_ASYNC_JOB_MIGRATION_IN))
         return;
-    qemuDomainObjDiscardAsyncJob(vm);
+    qemuDomainObjDiscardAsyncJob(vm, &priv->job);
 }
 
 static qemuProcessIncomingDefPtr
@@ -5452,12 +5453,12 @@ qemuMigrationJobStart(virDomainObjPtr vm,
                JOB_MASK(QEMU_JOB_MIGRATION_OP);
     }
 
-    if (qemuDomainObjBeginAsyncJob(vm, job, op, apiFlags) < 0)
+    if (qemuDomainObjBeginAsyncJob(vm, &priv->job, job, op, apiFlags) < 0)
         return -1;
 
     jobPriv->current->statsType = QEMU_DOMAIN_JOB_STATS_TYPE_MIGRATION;
 
-    qemuDomainObjSetAsyncJobMask(vm, mask);
+    qemuDomainObjSetAsyncJobMask(&priv->job, mask);
     return 0;
 }
 
@@ -5474,7 +5475,7 @@ qemuMigrationJobSetPhase(virDomainObjPtr vm,
         return;
     }
 
-    qemuDomainObjSetJobPhase(vm, phase);
+    qemuDomainObjSetJobPhase(vm, &priv->job, phase);
 }
 
 static void
@@ -5487,7 +5488,8 @@ qemuMigrationJobStartPhase(virDomainObjPtr vm,
 static void
 qemuMigrationJobContinue(virDomainObjPtr vm)
 {
-    qemuDomainObjReleaseAsyncJob(vm);
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainObjReleaseAsyncJob(&priv->job);
 }
 
 static bool
@@ -5513,7 +5515,8 @@ qemuMigrationJobIsActive(virDomainObjPtr vm,
 static void
 qemuMigrationJobFinish(virDomainObjPtr vm)
 {
-    qemuDomainObjEndAsyncJob(vm);
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    qemuDomainObjEndAsyncJob(vm, &priv->job);
 }
 
 
