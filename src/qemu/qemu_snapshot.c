@@ -1248,16 +1248,16 @@ qemuSnapshotCreateActiveExternal(virQEMUDriverPtr driver,
     if (flags & VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE) {
         int freeze;
 
-        if (qemuDomainObjBeginAgentJob(vm, QEMU_AGENT_JOB_MODIFY) < 0)
+        if (qemuDomainObjBeginAgentJob(vm, &priv->job, QEMU_AGENT_JOB_MODIFY) < 0)
             goto cleanup;
 
         if (virDomainObjCheckActive(vm) < 0) {
-            qemuDomainObjEndAgentJob(vm);
+            qemuDomainObjEndAgentJob(vm, &priv->job);
             goto cleanup;
         }
 
         freeze = qemuSnapshotFSFreeze(vm, NULL, 0);
-        qemuDomainObjEndAgentJob(vm);
+        qemuDomainObjEndAgentJob(vm, &priv->job);
 
         if (freeze < 0) {
             /* the helper reported the error */
@@ -1312,7 +1312,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriverPtr driver,
         jobPriv->current->statsType = QEMU_DOMAIN_JOB_STATS_TYPE_SAVEDUMP;
 
         /* allow the migration job to be cancelled or the domain to be paused */
-        qemuDomainObjSetAsyncJobMask(vm, (QEMU_JOB_DEFAULT_MASK |
+        qemuDomainObjSetAsyncJobMask(&priv->job, (QEMU_JOB_DEFAULT_MASK |
                                           JOB_MASK(QEMU_JOB_SUSPEND) |
                                           JOB_MASK(QEMU_JOB_MIGRATION_OP)));
 
@@ -1342,7 +1342,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriverPtr driver,
         memory_unlink = true;
 
         /* forbid any further manipulation */
-        qemuDomainObjSetAsyncJobMask(vm, QEMU_JOB_DEFAULT_MASK);
+        qemuDomainObjSetAsyncJobMask(&priv->job, QEMU_JOB_DEFAULT_MASK);
     }
 
     /* the domain is now paused if a memory snapshot was requested */
@@ -1393,7 +1393,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriverPtr driver,
     }
 
     if (thaw != 0 &&
-        qemuDomainObjBeginAgentJob(vm, QEMU_AGENT_JOB_MODIFY) >= 0 &&
+        qemuDomainObjBeginAgentJob(vm, &priv->job, QEMU_AGENT_JOB_MODIFY) >= 0 &&
         virDomainObjIsActive(vm)) {
         if (qemuSnapshotFSThaw(vm, ret == 0 && thaw > 0) < 0) {
             /* helper reported the error, if it was needed */
@@ -1401,7 +1401,7 @@ qemuSnapshotCreateActiveExternal(virQEMUDriverPtr driver,
                 ret = -1;
         }
 
-        qemuDomainObjEndAgentJob(vm);
+        qemuDomainObjEndAgentJob(vm, &priv->job);
     }
 
     virQEMUSaveDataFree(data);
@@ -1544,11 +1544,11 @@ qemuSnapshotCreateXML(virDomainPtr domain,
      * a regular job, so we need to set the job mask to disallow query as
      * 'savevm' blocks the monitor. External snapshot will then modify the
      * job mask appropriately. */
-    if (qemuDomainObjBeginAsyncJob(vm, QEMU_ASYNC_JOB_SNAPSHOT,
+    if (qemuDomainObjBeginAsyncJob(vm, &priv->job, QEMU_ASYNC_JOB_SNAPSHOT,
                                    VIR_DOMAIN_JOB_OPERATION_SNAPSHOT, flags) < 0)
         goto cleanup;
 
-    qemuDomainObjSetAsyncJobMask(vm, QEMU_JOB_NONE);
+    qemuDomainObjSetAsyncJobMask(&priv->job, QEMU_JOB_NONE);
 
     if (redefine) {
         if (virDomainSnapshotRedefinePrep(vm, &def, &snap,
@@ -1679,7 +1679,7 @@ qemuSnapshotCreateXML(virDomainPtr domain,
         virDomainSnapshotObjListRemove(vm->snapshots, snap);
     }
 
-    qemuDomainObjEndAsyncJob(vm);
+    qemuDomainObjEndAsyncJob(vm, &priv->job);
 
  cleanup:
     return snapshot;
@@ -2176,6 +2176,7 @@ qemuSnapshotDelete(virDomainObjPtr vm,
     virDomainMomentObjPtr snap = NULL;
     virQEMUMomentRemove rem;
     virQEMUMomentReparent rep;
+    qemuDomainObjPrivatePtr priv = vm->privateData;
     bool metadata_only = !!(flags & VIR_DOMAIN_SNAPSHOT_DELETE_METADATA_ONLY);
     int external = 0;
     g_autoptr(virQEMUDriverConfig) cfg = virQEMUDriverGetConfig(driver);
@@ -2184,7 +2185,7 @@ qemuSnapshotDelete(virDomainObjPtr vm,
                   VIR_DOMAIN_SNAPSHOT_DELETE_METADATA_ONLY |
                   VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN_ONLY, -1);
 
-    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) < 0)
         goto cleanup;
 
     if (!(snap = qemuSnapObjFromSnapshot(vm, snapshot)))
@@ -2257,7 +2258,7 @@ qemuSnapshotDelete(virDomainObjPtr vm,
     }
 
  endjob:
-    qemuDomainObjEndJob(vm);
+    qemuDomainObjEndJob(vm, &priv->job);
 
  cleanup:
     return ret;

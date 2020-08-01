@@ -572,7 +572,7 @@ qemuBackupJobTerminate(virDomainObjPtr vm,
 
     virDomainBackupDefFree(priv->backup);
     priv->backup = NULL;
-    qemuDomainObjEndAsyncJob(vm);
+    qemuDomainObjEndAsyncJob(vm, &priv->job);
 }
 
 
@@ -740,13 +740,14 @@ qemuBackupBegin(virDomainObjPtr vm,
      * infrastructure for async jobs. We'll allow standard modify-type jobs
      * as the interlocking of conflicting operations is handled on the block
      * job level */
-    if (qemuDomainObjBeginAsyncJob(vm, QEMU_ASYNC_JOB_BACKUP,
+    if (qemuDomainObjBeginAsyncJob(vm, &priv->job, QEMU_ASYNC_JOB_BACKUP,
                                    VIR_DOMAIN_JOB_OPERATION_BACKUP, flags) < 0)
         return -1;
 
-    qemuDomainObjSetAsyncJobMask(vm, (QEMU_JOB_DEFAULT_MASK |
-                                      JOB_MASK(QEMU_JOB_SUSPEND) |
-                                      JOB_MASK(QEMU_JOB_MODIFY)));
+    qemuDomainObjSetAsyncJobMask(&priv->job,
+                                 (QEMU_JOB_DEFAULT_MASK |
+                                  JOB_MASK(QEMU_JOB_SUSPEND) |
+                                  JOB_MASK(QEMU_JOB_MODIFY)));
     jobPriv->current->statsType = QEMU_DOMAIN_JOB_STATS_TYPE_BACKUP;
 
     if (!virDomainObjIsActive(vm)) {
@@ -877,9 +878,9 @@ qemuBackupBegin(virDomainObjPtr vm,
         def = g_steal_pointer(&priv->backup);
 
     if (ret == 0)
-        qemuDomainObjReleaseAsyncJob(vm);
+        qemuDomainObjReleaseAsyncJob(&priv->job);
     else
-        qemuDomainObjEndAsyncJob(vm);
+        qemuDomainObjEndAsyncJob(vm, &priv->job);
 
     return ret;
 }

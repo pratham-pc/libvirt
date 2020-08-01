@@ -182,35 +182,45 @@ int qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
                                       const char *phase);
 
 int qemuDomainObjBeginJob(virDomainObjPtr obj,
+                          qemuDomainJobObjPtr jobObj,
                           qemuDomainJob job)
     G_GNUC_WARN_UNUSED_RESULT;
 int qemuDomainObjBeginAgentJob(virDomainObjPtr obj,
+                               qemuDomainJobObjPtr jobObj,
                                qemuDomainAgentJob agentJob)
     G_GNUC_WARN_UNUSED_RESULT;
 int qemuDomainObjBeginAsyncJob(virDomainObjPtr obj,
+                               qemuDomainJobObjPtr jobObj,
                                qemuDomainAsyncJob asyncJob,
                                virDomainJobOperation operation,
                                unsigned long apiFlags)
     G_GNUC_WARN_UNUSED_RESULT;
 int qemuDomainObjBeginNestedJob(virDomainObjPtr obj,
+                                qemuDomainJobObjPtr jobObj,
                                 qemuDomainAsyncJob asyncJob)
     G_GNUC_WARN_UNUSED_RESULT;
 int qemuDomainObjBeginJobNowait(virDomainObjPtr obj,
+                                qemuDomainJobObjPtr jobObj,
                                 qemuDomainJob job)
     G_GNUC_WARN_UNUSED_RESULT;
 
-void qemuDomainObjEndJob(virDomainObjPtr obj);
-void qemuDomainObjEndAgentJob(virDomainObjPtr obj);
-void qemuDomainObjEndAsyncJob(virDomainObjPtr obj);
-void qemuDomainObjAbortAsyncJob(virDomainObjPtr obj);
+void qemuDomainObjEndJob(virDomainObjPtr obj, qemuDomainJobObjPtr jobObj);
+void qemuDomainObjEndAgentJob(virDomainObjPtr obj,
+                              qemuDomainJobObjPtr jobObj);
+void qemuDomainObjEndAsyncJob(virDomainObjPtr obj,
+                              qemuDomainJobObjPtr jobObj);
+void qemuDomainObjAbortAsyncJob(virDomainObjPtr obj,
+                                qemuDomainJobObjPtr job);
 void qemuDomainObjSetJobPhase(virDomainObjPtr obj,
+                              qemuDomainJobObjPtr job,
                               int phase);
-void qemuDomainObjSetAsyncJobMask(virDomainObjPtr obj,
+void qemuDomainObjSetAsyncJobMask(qemuDomainJobObjPtr job,
                                   unsigned long long allowedJobs);
-int qemuDomainObjRestoreJob(virDomainObjPtr obj,
-                            qemuDomainJobObjPtr job);
-void qemuDomainObjDiscardAsyncJob(virDomainObjPtr obj);
-void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
+int qemuDomainObjRestoreJob(qemuDomainJobObjPtr job,
+                            qemuDomainJobObjPtr oldJob);
+void qemuDomainObjDiscardAsyncJob(virDomainObjPtr obj,
+                                  qemuDomainJobObjPtr job);
+void qemuDomainObjReleaseAsyncJob(qemuDomainJobObjPtr job);
 
 bool qemuDomainTrackJob(qemuDomainJob job);
 
@@ -224,8 +234,10 @@ bool qemuDomainJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob);
 
 int
 qemuDomainObjPrivateXMLFormatJob(virBufferPtr buf,
-                                 virDomainObjPtr vm);
+                                 virDomainObjPtr vm,
+                                 qemuDomainJobObjPtr jobObj);
 
 int
 qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
-                                xmlXPathContextPtr ctxt);
+                                xmlXPathContextPtr ctxt,
+                                qemuDomainJobObjPtr job);

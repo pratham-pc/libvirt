@@ -539,7 +539,7 @@ qemuCheckpointCreateXML(virDomainPtr domain,
     /* Unlike snapshots, the RNG schema already ensured a sane filename. */
 
     /* We are going to modify the domain below. */
-    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) < 0)
         return NULL;
 
     if (redefine) {
@@ -561,7 +561,7 @@ qemuCheckpointCreateXML(virDomainPtr domain,
     checkpoint = virGetDomainCheckpoint(domain, chk->def->name);
 
  endjob:
-    qemuDomainObjEndJob(vm);
+    qemuDomainObjEndJob(vm, &priv->job);
 
     return checkpoint;
 }
@@ -588,7 +588,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     size_t i;
     int ret = -1;
 
-    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) < 0)
         return -1;
 
     if (virDomainObjCheckActive(vm) < 0)
@@ -697,7 +697,7 @@ qemuCheckpointGetXMLDescUpdateSize(virDomainObjPtr vm,
     ret = 0;
 
  endjob:
-    qemuDomainObjEndJob(vm);
+    qemuDomainObjEndJob(vm, &priv->job);
     return ret;
 }
 
@@ -781,7 +781,7 @@ qemuCheckpointDelete(virDomainObjPtr vm,
                   VIR_DOMAIN_CHECKPOINT_DELETE_METADATA_ONLY |
                   VIR_DOMAIN_CHECKPOINT_DELETE_CHILDREN_ONLY, -1);
 
-    if (qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) < 0)
+    if (qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) < 0)
         return -1;
 
     if (!metadata_only) {
@@ -849,6 +849,6 @@ qemuCheckpointDelete(virDomainObjPtr vm,
     }
 
  endjob:
-    qemuDomainObjEndJob(vm);
+    qemuDomainObjEndJob(vm, &priv->job);
     return ret;
 }

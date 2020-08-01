@@ -2994,7 +2994,7 @@ qemuDomainObjPrivateXMLFormat(virBufferPtr buf,
     if (priv->lockState)
         virBufferAsprintf(buf, "<lockstate>%s</lockstate>\n", priv->lockState);
 
-    if (qemuDomainObjPrivateXMLFormatJob(buf, vm) < 0)
+    if (qemuDomainObjPrivateXMLFormatJob(buf, vm, &priv->job) < 0)
         return -1;
 
     if (priv->fakeReboot)
@@ -3653,7 +3653,7 @@ qemuDomainObjPrivateXMLParse(xmlXPathContextPtr ctxt,
 
     priv->lockState = virXPathString("string(./lockstate)", ctxt);
 
-    if (qemuDomainObjPrivateXMLParseJob(vm, ctxt) < 0)
+    if (qemuDomainObjPrivateXMLParseJob(vm, ctxt, &priv->job) < 0)
         goto error;
 
     priv->fakeReboot = virXPathBoolean("boolean(./fakereboot)", ctxt) == 1;
@@ -6097,12 +6097,12 @@ qemuDomainObjEnterMonitorInternal(virDomainObjPtr obj,
 
     if (asyncJob != QEMU_ASYNC_JOB_NONE) {
         int ret;
-        if ((ret = qemuDomainObjBeginNestedJob(obj, asyncJob)) < 0)
+        if ((ret = qemuDomainObjBeginNestedJob(obj, &priv->job, asyncJob)) < 0)
             return ret;
         if (!virDomainObjIsActive(obj)) {
             virReportError(VIR_ERR_OPERATION_FAILED, "%s",
                            _("domain is no longer running"));
-            qemuDomainObjEndJob(obj);
+            qemuDomainObjEndJob(obj, &priv->job);
             return -1;
         }
     } else if (priv->job.asyncOwner == virThreadSelfID()) {
@@ -6147,7 +6147,7 @@ qemuDomainObjExitMonitorInternal(virDomainObjPtr obj)
         priv->mon = NULL;
 
     if (priv->job.active == QEMU_JOB_ASYNC_NESTED)
-        qemuDomainObjEndJob(obj);
+        qemuDomainObjEndJob(obj, &priv->job);
 }
 
 void qemuDomainObjEnterMonitor(virDomainObjPtr obj)
@@ -7291,13 +7291,14 @@ qemuDomainRemoveInactiveJob(virQEMUDriverPtr driver,
                             virDomainObjPtr vm)
 {
     bool haveJob;
+    qemuDomainObjPrivatePtr priv = vm->privateData;
 
-    haveJob = qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) >= 0;
+    haveJob = qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) >= 0;
 
     qemuDomainRemoveInactive(driver, vm);
 
     if (haveJob)
-        qemuDomainObjEndJob(vm);
+        qemuDomainObjEndJob(vm, &priv->job);
 }
 
 
@@ -7312,13 +7313,14 @@ qemuDomainRemoveInactiveJobLocked(virQEMUDriverPtr driver,
                                   virDomainObjPtr vm)
 {
     bool haveJob;
+    qemuDomainObjPrivatePtr priv = vm->privateData;
 
-    haveJob = qemuDomainObjBeginJob(vm, QEMU_JOB_MODIFY) >= 0;
+    haveJob = qemuDomainObjBeginJob(vm, &priv->job, QEMU_JOB_MODIFY) >= 0;
 
     qemuDomainRemoveInactiveLocked(driver, vm);
 
     if (haveJob)
-        qemuDomainObjEndJob(vm);
+        qemuDomainObjEndJob(vm, &priv->job);
 }
 
 
