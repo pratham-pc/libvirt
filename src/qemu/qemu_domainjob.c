@@ -765,7 +765,7 @@ qemuDomainObjPrivateXMLFormatNBDMigration(virBufferPtr buf,
         if (diskPriv->migrSource &&
             qemuDomainObjPrivateXMLFormatNBDMigrationSource(&childBuf,
                                                             diskPriv->migrSource,
-                                                            priv->driver->xmlopt) < 0)
+                                                            priv->job.cb->getDomainXMLOptionPtr(vm)) < 0)
             return -1;
 
         virXMLFormatElement(buf, "disk", &attrBuf, &childBuf);
@@ -892,7 +892,7 @@ qemuDomainObjPrivateXMLParseJobNBD(virDomainObjPtr vm,
 
                 if (qemuDomainObjPrivateXMLParseJobNBDSource(nodes[i], ctxt,
                                                              disk,
-                                                             priv->driver->xmlopt) < 0)
+                                                             priv->job.cb->getDomainXMLOptionPtr(vm)) < 0)
                     return -1;
             }
         }

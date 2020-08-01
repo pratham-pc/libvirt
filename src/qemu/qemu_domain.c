@@ -629,12 +629,20 @@ qemuDomainParseJobPrivate(xmlXPathContextPtr ctxt,
     return 0;
 }
 
+static virDomainXMLOptionPtr
+qemuGetDomainXMLOptionPtr(virDomainObjPtr vm)
+{
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    return priv->driver->xmlopt;
+
+}
 
 static qemuDomainObjPrivateJobCallbacks qemuPrivateJobCallbacks = {
     .allocJobPrivate = qemuJobAllocPrivate,
     .freeJobPrivate = qemuJobFreePrivate,
     .resetJobPrivate = qemuJobResetPrivate,
     .saveStatus = qemuDomainSaveStatus,
+    .getDomainXMLOptionPtr = qemuGetDomainXMLOptionPtr,
     .formatJob = qemuDomainFormatJobPrivate,
     .parseJob = qemuDomainParseJobPrivate,
     .setJobInfoOperation = qemuDomainJobInfoSetOperation,

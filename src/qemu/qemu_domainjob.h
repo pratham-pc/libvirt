@@ -105,6 +105,7 @@ typedef void *(*qemuDomainObjPrivateJobAlloc)(void);
 typedef void (*qemuDomainObjPrivateJobFree)(void *);
 typedef void (*qemuDomainObjPrivateJobReset)(void *);
 typedef void (*qemuSaveStatus)(virDomainObjPtr);
+typedef virDomainXMLOptionPtr (*qemuGetDomainXmlOptionPtr)(virDomainObjPtr);
 typedef int (*qemuDomainObjPrivateJobFormat)(virBufferPtr,
                                              qemuDomainJobObjPtr);
 typedef int (*qemuDomainObjPrivateJobParse)(xmlXPathContextPtr,
@@ -121,6 +122,7 @@ struct _qemuDomainObjPrivateJobCallbacks {
    qemuDomainObjPrivateJobFree freeJobPrivate;
    qemuDomainObjPrivateJobReset resetJobPrivate;
    qemuSaveStatus saveStatus;
+   qemuGetDomainXmlOptionPtr getDomainXMLOptionPtr;
    qemuDomainObjPrivateJobFormat formatJob;
    qemuDomainObjPrivateJobParse parseJob;
    qemuDomainObjJobInfoSetOperation setJobInfoOperation;
