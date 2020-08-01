@@ -540,6 +540,12 @@ struct _qemuDomainJobPrivate {
 };
 
 
+void qemuDomainRemoveInactiveJob(virQEMUDriverPtr driver,
+                                 virDomainObjPtr vm);
+
+void qemuDomainRemoveInactiveJobLocked(virQEMUDriverPtr driver,
+                                       virDomainObjPtr vm);
+
 void qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
                                      virDomainObjPtr vm);
 
