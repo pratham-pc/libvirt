@@ -70,7 +70,7 @@ qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
     switch (job) {
     case QEMU_ASYNC_JOB_MIGRATION_OUT:
     case QEMU_ASYNC_JOB_MIGRATION_IN:
-        return qemuMigrationJobPhaseTypeToString(phase);
+        return virMigrationJobPhaseTypeToString(phase);
 
     case QEMU_ASYNC_JOB_SAVE:
     case QEMU_ASYNC_JOB_DUMP:
@@ -96,7 +96,7 @@ qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
     switch (job) {
     case QEMU_ASYNC_JOB_MIGRATION_OUT:
     case QEMU_ASYNC_JOB_MIGRATION_IN:
-        return qemuMigrationJobPhaseTypeFromString(phase);
+        return virMigrationJobPhaseTypeFromString(phase);
 
     case QEMU_ASYNC_JOB_SAVE:
     case QEMU_ASYNC_JOB_DUMP:

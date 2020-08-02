@@ -3,6 +3,7 @@ hypervisor_sources = [
   'domain_driver.c',
   'virclosecallbacks.c',
   'virhostdev.c',
+  'virmigration.c',
 ]
 
 hypervisor_lib = static_library(
