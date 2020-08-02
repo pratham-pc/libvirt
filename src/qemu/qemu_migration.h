@@ -24,6 +24,7 @@
 #include "qemu_conf.h"
 #include "qemu_domain.h"
 #include "qemu_migration_params.h"
+#include "virmigration.h"
 #include "virenum.h"
 
 /*
@@ -86,22 +87,6 @@
     VIR_MIGRATE_PARAM_TLS_DESTINATION, VIR_TYPED_PARAM_STRING, \
     NULL
 
-
-typedef enum {
-    QEMU_MIGRATION_PHASE_NONE = 0,
-    QEMU_MIGRATION_PHASE_PERFORM2,
-    QEMU_MIGRATION_PHASE_BEGIN3,
-    QEMU_MIGRATION_PHASE_PERFORM3,
-    QEMU_MIGRATION_PHASE_PERFORM3_DONE,
-    QEMU_MIGRATION_PHASE_CONFIRM3_CANCELLED,
-    QEMU_MIGRATION_PHASE_CONFIRM3,
-    QEMU_MIGRATION_PHASE_PREPARE,
-    QEMU_MIGRATION_PHASE_FINISH2,
-    QEMU_MIGRATION_PHASE_FINISH3,
-
-    QEMU_MIGRATION_PHASE_LAST
-} qemuMigrationJobPhase;
-VIR_ENUM_DECL(qemuMigrationJobPhase);
 
 char *
 qemuMigrationSrcBegin(virConnectPtr conn,

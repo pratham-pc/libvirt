@@ -3429,24 +3429,24 @@ qemuProcessRecoverMigrationIn(virQEMUDriverPtr driver,
                     (state == VIR_DOMAIN_RUNNING &&
                      reason == VIR_DOMAIN_RUNNING_POSTCOPY);
 
-    switch ((qemuMigrationJobPhase) job->phase) {
-    case QEMU_MIGRATION_PHASE_NONE:
-    case QEMU_MIGRATION_PHASE_PERFORM2:
-    case QEMU_MIGRATION_PHASE_BEGIN3:
-    case QEMU_MIGRATION_PHASE_PERFORM3:
-    case QEMU_MIGRATION_PHASE_PERFORM3_DONE:
-    case QEMU_MIGRATION_PHASE_CONFIRM3_CANCELLED:
-    case QEMU_MIGRATION_PHASE_CONFIRM3:
-    case QEMU_MIGRATION_PHASE_LAST:
+    switch ((virMigrationJobPhase) job->phase) {
+    case VIR_MIGRATION_PHASE_NONE:
+    case VIR_MIGRATION_PHASE_PERFORM2:
+    case VIR_MIGRATION_PHASE_BEGIN3:
+    case VIR_MIGRATION_PHASE_PERFORM3:
+    case VIR_MIGRATION_PHASE_PERFORM3_DONE:
+    case VIR_MIGRATION_PHASE_CONFIRM3_CANCELLED:
+    case VIR_MIGRATION_PHASE_CONFIRM3:
+    case VIR_MIGRATION_PHASE_LAST:
         /* N/A for incoming migration */
         break;
 
-    case QEMU_MIGRATION_PHASE_PREPARE:
+    case VIR_MIGRATION_PHASE_PREPARE:
         VIR_DEBUG("Killing unfinished incoming migration for domain %s",
                   vm->def->name);
         return -1;
 
-    case QEMU_MIGRATION_PHASE_FINISH2:
+    case VIR_MIGRATION_PHASE_FINISH2:
         /* source domain is already killed so let's just resume the domain
          * and hope we are all set */
         VIR_DEBUG("Incoming migration finished, resuming domain %s",
@@ -3458,7 +3458,7 @@ qemuProcessRecoverMigrationIn(virQEMUDriverPtr driver,
         }
         break;
 
-    case QEMU_MIGRATION_PHASE_FINISH3:
+    case VIR_MIGRATION_PHASE_FINISH3:
         /* migration finished, we started resuming the domain but didn't
          * confirm success or failure yet; killing it seems safest unless
          * we already started guest CPUs or we were in post-copy mode */
@@ -3490,22 +3490,22 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
                      reason == VIR_DOMAIN_PAUSED_POSTCOPY_FAILED);
     bool resume = false;
 
-    switch ((qemuMigrationJobPhase) job->phase) {
-    case QEMU_MIGRATION_PHASE_NONE:
-    case QEMU_MIGRATION_PHASE_PREPARE:
-    case QEMU_MIGRATION_PHASE_FINISH2:
-    case QEMU_MIGRATION_PHASE_FINISH3:
-    case QEMU_MIGRATION_PHASE_LAST:
+    switch ((virMigrationJobPhase) job->phase) {
+    case VIR_MIGRATION_PHASE_NONE:
+    case VIR_MIGRATION_PHASE_PREPARE:
+    case VIR_MIGRATION_PHASE_FINISH2:
+    case VIR_MIGRATION_PHASE_FINISH3:
+    case VIR_MIGRATION_PHASE_LAST:
         /* N/A for outgoing migration */
         break;
 
-    case QEMU_MIGRATION_PHASE_BEGIN3:
+    case VIR_MIGRATION_PHASE_BEGIN3:
         /* nothing happened so far, just forget we were about to migrate the
          * domain */
         break;
 
-    case QEMU_MIGRATION_PHASE_PERFORM2:
-    case QEMU_MIGRATION_PHASE_PERFORM3:
+    case VIR_MIGRATION_PHASE_PERFORM2:
+    case VIR_MIGRATION_PHASE_PERFORM3:
         /* migration is still in progress, let's cancel it and resume the
          * domain; however we can only do that before migration enters
          * post-copy mode
@@ -3523,7 +3523,7 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
         }
         break;
 
-    case QEMU_MIGRATION_PHASE_PERFORM3_DONE:
+    case VIR_MIGRATION_PHASE_PERFORM3_DONE:
         /* migration finished but we didn't have a chance to get the result
          * of Finish3 step; third party needs to check what to do next; in
          * post-copy mode we can use PAUSED_POSTCOPY_FAILED state for this
@@ -3532,7 +3532,7 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
             qemuMigrationAnyPostcopyFailed(driver, vm);
         break;
 
-    case QEMU_MIGRATION_PHASE_CONFIRM3_CANCELLED:
+    case VIR_MIGRATION_PHASE_CONFIRM3_CANCELLED:
         /* Finish3 failed, we need to resume the domain, but once we enter
          * post-copy mode there's no way back, so let's just mark the domain
          * as broken in that case
@@ -3546,7 +3546,7 @@ qemuProcessRecoverMigrationOut(virQEMUDriverPtr driver,
         }
         break;
 
-    case QEMU_MIGRATION_PHASE_CONFIRM3:
+    case VIR_MIGRATION_PHASE_CONFIRM3:
         /* migration completed, we need to kill the domain here */
         *stopFlags |= VIR_QEMU_PROCESS_STOP_MIGRATED;
         return -1;

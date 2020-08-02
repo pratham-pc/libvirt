@@ -1474,6 +1474,10 @@ virHostdevUpdateActiveSCSIDevices;
 virHostdevUpdateActiveUSBDevices;
 
 
+# hypervisor/virmigration.h
+virMigrationJobPhaseTypeFromString;
+virMigrationJobPhaseTypeToString;
+
 # libvirt_internal.h
 virConnectSupportsFeature;
 virDomainMigrateBegin3;
