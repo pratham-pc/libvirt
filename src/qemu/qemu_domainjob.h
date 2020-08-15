@@ -116,6 +116,7 @@ typedef void (*qemuDomainObjCurrentJobInfoInit)(qemuDomainJobObjPtr,
 typedef int (*qemuDomainObjGetJobsQueued)(virDomainObjPtr);
 typedef void (*qemuDomainObjIncreaseJobsQueued)(virDomainObjPtr);
 typedef void (*qemuDomainObjDecreaseJobsQueued)(virDomainObjPtr);
+typedef int (*qemuDomainObjGetMaxQueuedJobs)(virDomainObjPtr);
 
 typedef struct _qemuDomainObjPrivateJobCallbacks qemuDomainObjPrivateJobCallbacks;
 typedef qemuDomainObjPrivateJobCallbacks *qemuDomainObjPrivateJobCallbacksPtr;
@@ -130,6 +131,7 @@ struct _qemuDomainObjPrivateJobCallbacks {
    qemuDomainObjGetJobsQueued getJobsQueued;
    qemuDomainObjIncreaseJobsQueued increaseJobsQueued;
    qemuDomainObjDecreaseJobsQueued decreaseJobsQueued;
+   qemuDomainObjGetMaxQueuedJobs getMaxQueuedJobs;
 };
 
 struct _qemuDomainJobObj {
