@@ -323,7 +323,7 @@ qemuDomainChangeMediaLegacy(virDomainObjPtr vm,
 int
 qemuHotplugAttachDBusVMState(virQEMUDriverPtr driver,
                              virDomainObjPtr vm,
-                             qemuDomainAsyncJob asyncJob)
+                             virDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     g_autoptr(virJSONValue) props = NULL;
@@ -368,7 +368,7 @@ qemuHotplugAttachDBusVMState(virQEMUDriverPtr driver,
  */
 int
 qemuHotplugRemoveDBusVMState(virDomainObjPtr vm,
-                             qemuDomainAsyncJob asyncJob)
+                             virDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int ret;
@@ -405,7 +405,7 @@ qemuHotplugRemoveDBusVMState(virDomainObjPtr vm,
 static int
 qemuHotplugAttachManagedPR(virDomainObjPtr vm,
                            virStorageSourcePtr src,
-                           qemuDomainAsyncJob asyncJob)
+                           virDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     virJSONValuePtr props = NULL;
@@ -453,7 +453,7 @@ qemuHotplugAttachManagedPR(virDomainObjPtr vm,
  */
 static int
 qemuHotplugRemoveManagedPR(virDomainObjPtr vm,
-                           qemuDomainAsyncJob asyncJob)
+                           virDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     virErrorPtr orig_err;
@@ -618,7 +618,7 @@ qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
     if (qemuDomainStorageSourceChainAccessAllow(driver, vm, newsrc) < 0)
         goto cleanup;
 
-    if (qemuHotplugAttachManagedPR(vm, newsrc, QEMU_ASYNC_JOB_NONE) < 0)
+    if (qemuHotplugAttachManagedPR(vm, newsrc, VIR_ASYNC_JOB_NONE) < 0)
         goto cleanup;
 
     if (virQEMUCapsGet(priv->qemuCaps, QEMU_CAPS_BLOCKDEV))
@@ -654,7 +654,7 @@ qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
 
     /* remove PR manager object if unneeded */
     if (managedpr)
-        ignore_value(qemuHotplugRemoveManagedPR(vm, QEMU_ASYNC_JOB_NONE));
+        ignore_value(qemuHotplugRemoveManagedPR(vm, VIR_ASYNC_JOB_NONE));
 
     /* revert old image do the disk definition */
     if (oldsrc)
@@ -716,7 +716,7 @@ qemuDomainAttachDiskGeneric(virQEMUDriverPtr driver,
     if (VIR_REALLOC_N(vm->def->disks, vm->def->ndisks + 1) < 0)
         goto cleanup;
 
-    if (qemuHotplugAttachManagedPR(vm, disk->src, QEMU_ASYNC_JOB_NONE) < 0)
+    if (qemuHotplugAttachManagedPR(vm, disk->src, VIR_ASYNC_JOB_NONE) < 0)
         goto cleanup;
 
     qemuDomainObjEnterMonitor(vm);
@@ -779,7 +779,7 @@ qemuDomainAttachDiskGeneric(virQEMUDriverPtr driver,
         ret = -2;
 
     if (virStorageSourceChainHasManagedPR(disk->src) &&
-        qemuHotplugRemoveManagedPR(vm, QEMU_ASYNC_JOB_NONE) < 0)
+        qemuHotplugRemoveManagedPR(vm, VIR_ASYNC_JOB_NONE) < 0)
         ret = -2;
 
     virDomainAuditDisk(vm, NULL, disk->src, "attach", false);
@@ -1665,7 +1665,7 @@ qemuDomainAttachHostPCIDevice(virQEMUDriverPtr driver,
 
 void
 qemuDomainDelTLSObjects(virDomainObjPtr vm,
-                        qemuDomainAsyncJob asyncJob,
+                        virDomainAsyncJob asyncJob,
                         const char *secAlias,
                         const char *tlsAlias)
 {
@@ -1695,7 +1695,7 @@ qemuDomainDelTLSObjects(virDomainObjPtr vm,
 
 int
 qemuDomainAddTLSObjects(virDomainObjPtr vm,
-                        qemuDomainAsyncJob asyncJob,
+                        virDomainAsyncJob asyncJob,
                         virJSONValuePtr *secProps,
                         virJSONValuePtr *tlsProps)
 {
@@ -1802,7 +1802,7 @@ qemuDomainAddChardevTLSObjects(virQEMUDriverPtr driver,
         goto cleanup;
     dev->data.tcp.tlscreds = true;
 
-    if (qemuDomainAddTLSObjects(vm, QEMU_ASYNC_JOB_NONE,
+    if (qemuDomainAddTLSObjects(vm, VIR_ASYNC_JOB_NONE,
                                 &secProps, &tlsProps) < 0)
         goto cleanup;
 
@@ -1922,7 +1922,7 @@ int qemuDomainAttachRedirdevDevice(virQEMUDriverPtr driver,
         ignore_value(qemuMonitorDetachCharDev(priv->mon, charAlias));
     ignore_value(qemuDomainObjExitMonitor(vm));
     virErrorRestore(&orig_err);
-    qemuDomainDelTLSObjects(vm, QEMU_ASYNC_JOB_NONE,
+    qemuDomainDelTLSObjects(vm, VIR_ASYNC_JOB_NONE,
                             secAlias, tlsAlias);
     goto audit;
 }
@@ -2202,7 +2202,7 @@ int qemuDomainAttachChrDevice(virQEMUDriverPtr driver,
     ignore_value(qemuDomainObjExitMonitor(vm));
     virErrorRestore(&orig_err);
 
-    qemuDomainDelTLSObjects(vm, QEMU_ASYNC_JOB_NONE,
+    qemuDomainDelTLSObjects(vm, VIR_ASYNC_JOB_NONE,
                             secAlias, tlsAlias);
     goto audit;
 }
@@ -2317,7 +2317,7 @@ qemuDomainAttachRNGDevice(virQEMUDriverPtr driver,
         releaseaddr = false;
     virErrorRestore(&orig_err);
 
-    qemuDomainDelTLSObjects(vm, QEMU_ASYNC_JOB_NONE,
+    qemuDomainDelTLSObjects(vm, VIR_ASYNC_JOB_NONE,
                             secAlias, tlsAlias);
     goto audit;
 }
@@ -2415,13 +2415,13 @@ qemuDomainAttachMemory(virQEMUDriverPtr driver,
     virObjectEventStateQueue(driver->domainEventState, event);
 
     /* fix the balloon size */
-    ignore_value(qemuProcessRefreshBalloonState(vm, QEMU_ASYNC_JOB_NONE));
+    ignore_value(qemuProcessRefreshBalloonState(vm, VIR_ASYNC_JOB_NONE));
 
     /* mem is consumed by vm->def */
     mem = NULL;
 
     /* this step is best effort, removing the device would be so much trouble */
-    ignore_value(qemuDomainUpdateMemoryDeviceInfo(vm, QEMU_ASYNC_JOB_NONE));
+    ignore_value(qemuDomainUpdateMemoryDeviceInfo(vm, VIR_ASYNC_JOB_NONE));
 
     ret = 0;
 
@@ -4099,7 +4099,7 @@ qemuDomainChangeGraphics(virQEMUDriverPtr driver,
             if (qemuDomainChangeGraphicsPasswords(vm, VIR_DOMAIN_GRAPHICS_TYPE_VNC,
                                                   &dev->data.vnc.auth,
                                                   cfg->vncPassword,
-                                                  QEMU_ASYNC_JOB_NONE) < 0)
+                                                  VIR_ASYNC_JOB_NONE) < 0)
                 return -1;
 
             /* Steal the new dev's  char * reference */
@@ -4146,7 +4146,7 @@ qemuDomainChangeGraphics(virQEMUDriverPtr driver,
             if (qemuDomainChangeGraphicsPasswords(vm, VIR_DOMAIN_GRAPHICS_TYPE_SPICE,
                                                   &dev->data.spice.auth,
                                                   cfg->spicePassword,
-                                                  QEMU_ASYNC_JOB_NONE) < 0)
+                                                  VIR_ASYNC_JOB_NONE) < 0)
                 return -1;
 
             /* Steal the new dev's char * reference */
@@ -4281,7 +4281,7 @@ qemuDomainRemoveDiskDevice(virQEMUDriverPtr driver,
     ignore_value(qemuRemoveSharedDevice(driver, &dev, vm->def->name));
 
     if (virStorageSourceChainHasManagedPR(disk->src) &&
-        qemuHotplugRemoveManagedPR(vm, QEMU_ASYNC_JOB_NONE) < 0)
+        qemuHotplugRemoveManagedPR(vm, VIR_ASYNC_JOB_NONE) < 0)
         goto cleanup;
 
     ret = 0;
@@ -4358,7 +4358,7 @@ qemuDomainRemoveMemoryDevice(virQEMUDriverPtr driver,
     virDomainMemoryDefFree(mem);
 
     /* fix the balloon size */
-    ignore_value(qemuProcessRefreshBalloonState(vm, QEMU_ASYNC_JOB_NONE));
+    ignore_value(qemuProcessRefreshBalloonState(vm, VIR_ASYNC_JOB_NONE));
 
     /* decrease the mlock limit after memory unplug if necessary */
     ignore_value(qemuDomainAdjustMaxMemLock(vm, false));
@@ -5903,7 +5903,7 @@ qemuDomainRemoveVcpu(virDomainObjPtr vm,
     virErrorPtr save_error = NULL;
     size_t i;
 
-    if (qemuDomainRefreshVcpuInfo(vm, QEMU_ASYNC_JOB_NONE, false) < 0)
+    if (qemuDomainRefreshVcpuInfo(vm, VIR_ASYNC_JOB_NONE, false) < 0)
         return -1;
 
     /* validation requires us to set the expected state prior to calling it */
@@ -6052,7 +6052,7 @@ qemuDomainHotplugAddVcpu(virQEMUDriverPtr driver,
     if (newhotplug)
         vm->def->individualvcpus = true;
 
-    if (qemuDomainRefreshVcpuInfo(vm, QEMU_ASYNC_JOB_NONE, false) < 0)
+    if (qemuDomainRefreshVcpuInfo(vm, VIR_ASYNC_JOB_NONE, false) < 0)
         goto cleanup;
 
     /* validation requires us to set the expected state prior to calling it */

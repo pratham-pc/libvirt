@@ -1447,6 +1447,34 @@ virCloseCallbacksSet;
 virCloseCallbacksUnset;
 
 
+# hypervisor/virdomainjob.h
+virDomainAsyncJobPhaseFromString;
+virDomainAsyncJobPhaseToString;
+virDomainAsyncJobTypeFromString;
+virDomainAsyncJobTypeToString;
+virDomainJobAllowed;
+virDomainJobTypeFromString;
+virDomainJobTypeToString;
+virDomainObjAbortAsyncJob;
+virDomainObjBeginAgentJob;
+virDomainObjBeginAsyncJob;
+virDomainObjBeginJob;
+virDomainObjBeginJobNowait;
+virDomainObjBeginNestedJob;
+virDomainObjDiscardAsyncJob;
+virDomainObjEndAgentJob;
+virDomainObjEndAsyncJob;
+virDomainObjEndJob;
+virDomainObjFreeJob;
+virDomainObjInitJob;
+virDomainObjPrivateXMLFormatJob;
+virDomainObjPrivateXMLParseJob;
+virDomainObjReleaseAsyncJob;
+virDomainObjRestoreJob;
+virDomainObjSetAsyncJobMask;
+virDomainObjSetJobPhase;
+
+
 # hypervisor/virhostdev.h
 virHostdevFindUSBDevice;
 virHostdevManagerGetDefault;

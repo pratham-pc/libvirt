@@ -32,12 +32,12 @@ int qemuDomainChangeEjectableMedia(virQEMUDriverPtr driver,
                                    bool force);
 
 void qemuDomainDelTLSObjects(virDomainObjPtr vm,
-                             qemuDomainAsyncJob asyncJob,
+                             virDomainAsyncJob asyncJob,
                              const char *secAlias,
                              const char *tlsAlias);
 
 int qemuDomainAddTLSObjects(virDomainObjPtr vm,
-                            qemuDomainAsyncJob asyncJob,
+                            virDomainAsyncJob asyncJob,
                             virJSONValuePtr *secProps,
                             virJSONValuePtr *tlsProps);
 
@@ -146,7 +146,7 @@ unsigned long long qemuDomainGetUnplugTimeout(virDomainObjPtr vm) G_GNUC_NO_INLI
 
 int qemuHotplugAttachDBusVMState(virQEMUDriverPtr driver,
                                  virDomainObjPtr vm,
-                                 qemuDomainAsyncJob asyncJob);
+                                 virDomainAsyncJob asyncJob);
 
 int qemuHotplugRemoveDBusVMState(virDomainObjPtr vm,
-                                 qemuDomainAsyncJob asyncJob);
+                                 virDomainAsyncJob asyncJob);

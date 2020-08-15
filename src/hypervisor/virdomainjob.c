@@ -1,5 +1,5 @@
 /*
- * qemu_domainjob.c: helper functions for QEMU domain jobs
+ * virdomainjob.c: helper functions for domain jobs
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,20 +18,21 @@
 
 #include <config.h>
 
-#include "qemu_migration.h"
-#include "qemu_domainjob.h"
+#include "domain_conf.h"
+#include "virdomainjob.h"
+#include "virmigration.h"
 #include "viralloc.h"
 #include "virlog.h"
 #include "virerror.h"
 #include "virtime.h"
 #include "virthreadjob.h"
 
-#define VIR_FROM_THIS VIR_FROM_QEMU
+#define VIR_FROM_THIS VIR_FROM_NONE
 
-VIR_LOG_INIT("qemu.qemu_domainjob");
+VIR_LOG_INIT("util.virdomainjob");
 
-VIR_ENUM_IMPL(qemuDomainJob,
-              QEMU_JOB_LAST,
+VIR_ENUM_IMPL(virDomainJob,
+              VIR_JOB_LAST,
               "none",
               "query",
               "destroy",
@@ -43,15 +44,15 @@ VIR_ENUM_IMPL(qemuDomainJob,
               "async nested",
 );
 
-VIR_ENUM_IMPL(qemuDomainAgentJob,
-              QEMU_AGENT_JOB_LAST,
+VIR_ENUM_IMPL(virDomainAgentJob,
+              VIR_AGENT_JOB_LAST,
               "none",
               "query",
               "modify",
 );
 
-VIR_ENUM_IMPL(qemuDomainAsyncJob,
-              QEMU_ASYNC_JOB_LAST,
+VIR_ENUM_IMPL(virDomainAsyncJob,
+              VIR_ASYNC_JOB_LAST,
               "none",
               "migration out",
               "migration in",
@@ -63,22 +64,22 @@ VIR_ENUM_IMPL(qemuDomainAsyncJob,
 );
 
 const char *
-qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
+virDomainAsyncJobPhaseToString(virDomainAsyncJob job,
                                 int phase G_GNUC_UNUSED)
 {
     switch (job) {
-    case QEMU_ASYNC_JOB_MIGRATION_OUT:
-    case QEMU_ASYNC_JOB_MIGRATION_IN:
+    case VIR_ASYNC_JOB_MIGRATION_OUT:
+    case VIR_ASYNC_JOB_MIGRATION_IN:
         return virMigrationJobPhaseTypeToString(phase);
 
-    case QEMU_ASYNC_JOB_SAVE:
-    case QEMU_ASYNC_JOB_DUMP:
-    case QEMU_ASYNC_JOB_SNAPSHOT:
-    case QEMU_ASYNC_JOB_START:
-    case QEMU_ASYNC_JOB_NONE:
-    case QEMU_ASYNC_JOB_BACKUP:
+    case VIR_ASYNC_JOB_SAVE:
+    case VIR_ASYNC_JOB_DUMP:
+    case VIR_ASYNC_JOB_SNAPSHOT:
+    case VIR_ASYNC_JOB_START:
+    case VIR_ASYNC_JOB_NONE:
+    case VIR_ASYNC_JOB_BACKUP:
         G_GNUC_FALLTHROUGH;
-    case QEMU_ASYNC_JOB_LAST:
+    case VIR_ASYNC_JOB_LAST:
         break;
     }
 
@@ -86,25 +87,25 @@ qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
 }
 
 int
-qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
+virDomainAsyncJobPhaseFromString(virDomainAsyncJob job,
                                   const char *phase)
 {
     if (!phase)
         return 0;
 
     switch (job) {
-    case QEMU_ASYNC_JOB_MIGRATION_OUT:
-    case QEMU_ASYNC_JOB_MIGRATION_IN:
+    case VIR_ASYNC_JOB_MIGRATION_OUT:
+    case VIR_ASYNC_JOB_MIGRATION_IN:
         return virMigrationJobPhaseTypeFromString(phase);
 
-    case QEMU_ASYNC_JOB_SAVE:
-    case QEMU_ASYNC_JOB_DUMP:
-    case QEMU_ASYNC_JOB_SNAPSHOT:
-    case QEMU_ASYNC_JOB_START:
-    case QEMU_ASYNC_JOB_NONE:
-    case QEMU_ASYNC_JOB_BACKUP:
+    case VIR_ASYNC_JOB_SAVE:
+    case VIR_ASYNC_JOB_DUMP:
+    case VIR_ASYNC_JOB_SNAPSHOT:
+    case VIR_ASYNC_JOB_START:
+    case VIR_ASYNC_JOB_NONE:
+    case VIR_ASYNC_JOB_BACKUP:
         G_GNUC_FALLTHROUGH;
-    case QEMU_ASYNC_JOB_LAST:
+    case VIR_ASYNC_JOB_LAST:
         break;
     }
 
@@ -115,8 +116,8 @@ qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
 }
 
 int
-qemuDomainObjInitJob(qemuDomainJobObjPtr job,
-                     qemuDomainJobPrivateCallbacksPtr cb)
+virDomainObjInitJob(virDomainJobObjPtr job,
+                    virDomainJobPrivateCallbacksPtr cb)
 {
     memset(job, 0, sizeof(*job));
     job->cb = cb;
@@ -140,9 +141,9 @@ qemuDomainObjInitJob(qemuDomainJobObjPtr job,
 
 
 static void
-qemuDomainObjResetJob(qemuDomainJobObjPtr job)
+virDomainObjResetJob(virDomainJobObjPtr job)
 {
-    job->active = QEMU_JOB_NONE;
+    job->active = VIR_JOB_NONE;
     job->owner = 0;
     job->ownerAPI = NULL;
     job->started = 0;
@@ -150,9 +151,9 @@ qemuDomainObjResetJob(qemuDomainJobObjPtr job)
 
 
 static void
-qemuDomainObjResetAgentJob(qemuDomainJobObjPtr job)
+virDomainObjResetAgentJob(virDomainJobObjPtr job)
 {
-    job->agentActive = QEMU_AGENT_JOB_NONE;
+    job->agentActive = VIR_AGENT_JOB_NONE;
     job->agentOwner = 0;
     job->agentOwnerAPI = NULL;
     job->agentStarted = 0;
@@ -160,14 +161,14 @@ qemuDomainObjResetAgentJob(qemuDomainJobObjPtr job)
 
 
 static void
-qemuDomainObjResetAsyncJob(qemuDomainJobObjPtr job)
+virDomainObjResetAsyncJob(virDomainJobObjPtr job)
 {
-    job->asyncJob = QEMU_ASYNC_JOB_NONE;
+    job->asyncJob = VIR_ASYNC_JOB_NONE;
     job->asyncOwner = 0;
     job->asyncOwnerAPI = NULL;
     job->asyncStarted = 0;
     job->phase = 0;
-    job->mask = QEMU_JOB_DEFAULT_MASK;
+    job->mask = VIR_JOB_DEFAULT_MASK;
     job->abortJob = false;
     VIR_FREE(job->error);
     job->cb->jobcb->resetJobPrivate(job->privateData);
@@ -175,8 +176,8 @@ qemuDomainObjResetAsyncJob(qemuDomainJobObjPtr job)
 }
 
 int
-qemuDomainObjRestoreJob(qemuDomainJobObjPtr job,
-                        qemuDomainJobObjPtr oldJob)
+virDomainObjRestoreJob(virDomainJobObjPtr job,
+                       virDomainJobObjPtr oldJob)
 {
     memset(oldJob, 0, sizeof(*oldJob));
     oldJob->active = job->active;
@@ -191,32 +192,32 @@ qemuDomainObjRestoreJob(qemuDomainJobObjPtr job,
         return -1;
     oldJob->cb = job->cb;
 
-    qemuDomainObjResetJob(job);
-    qemuDomainObjResetAsyncJob(job);
+    virDomainObjResetJob(job);
+    virDomainObjResetAsyncJob(job);
     return 0;
 }
 
 void
-qemuDomainObjFreeJob(qemuDomainJobObjPtr job)
+virDomainObjFreeJob(virDomainJobObjPtr job)
 {
-    qemuDomainObjResetJob(job);
-    qemuDomainObjResetAsyncJob(job);
+    virDomainObjResetJob(job);
+    virDomainObjResetAsyncJob(job);
     job->cb->jobcb->freeJobPrivate(job->privateData);
     virCondDestroy(&job->cond);
     virCondDestroy(&job->asyncCond);
 }
 
 bool
-qemuDomainTrackJob(qemuDomainJob job)
+virDomainTrackJob(virDomainJob job)
 {
-    return (QEMU_DOMAIN_TRACK_JOBS & JOB_MASK(job)) != 0;
+    return (VIR_DOMAIN_TRACK_JOBS & JOB_MASK(job)) != 0;
 }
 
 
 void
-qemuDomainObjSetJobPhase(virDomainObjPtr obj,
-                         qemuDomainJobObjPtr job,
-                         int phase)
+virDomainObjSetJobPhase(virDomainObjPtr obj,
+                        virDomainJobObjPtr job,
+                        int phase)
 {
     unsigned long long me = virThreadSelfID();
 
@@ -224,12 +225,12 @@ qemuDomainObjSetJobPhase(virDomainObjPtr obj,
         return;
 
     VIR_DEBUG("Setting '%s' phase to '%s'",
-              qemuDomainAsyncJobTypeToString(job->asyncJob),
-              qemuDomainAsyncJobPhaseToString(job->asyncJob, phase));
+              virDomainAsyncJobTypeToString(job->asyncJob),
+              virDomainAsyncJobPhaseToString(job->asyncJob, phase));
 
     if (job->asyncOwner && me != job->asyncOwner) {
         VIR_WARN("'%s' async job is owned by thread %llu",
-                 qemuDomainAsyncJobTypeToString(job->asyncJob),
+                 virDomainAsyncJobTypeToString(job->asyncJob),
                  job->asyncOwner);
     }
 
@@ -239,77 +240,77 @@ qemuDomainObjSetJobPhase(virDomainObjPtr obj,
 }
 
 void
-qemuDomainObjSetAsyncJobMask(qemuDomainJobObjPtr job,
-                             unsigned long long allowedJobs)
+virDomainObjSetAsyncJobMask(virDomainJobObjPtr job,
+                            unsigned long long allowedJobs)
 {
     if (!job->asyncJob)
         return;
 
-    job->mask = allowedJobs | JOB_MASK(QEMU_JOB_DESTROY);
+    job->mask = allowedJobs | JOB_MASK(VIR_JOB_DESTROY);
 }
 
 void
-qemuDomainObjDiscardAsyncJob(virDomainObjPtr obj,
-                             qemuDomainJobObjPtr job)
+virDomainObjDiscardAsyncJob(virDomainObjPtr obj,
+                            virDomainJobObjPtr job)
 {
-    if (job->active == QEMU_JOB_ASYNC_NESTED)
-        qemuDomainObjResetJob(job);
-    qemuDomainObjResetAsyncJob(job);
+    if (job->active == VIR_JOB_ASYNC_NESTED)
+        virDomainObjResetJob(job);
+    virDomainObjResetAsyncJob(job);
     job->cb->saveStatus(obj);
 }
 
 void
-qemuDomainObjReleaseAsyncJob(qemuDomainJobObjPtr job)
+virDomainObjReleaseAsyncJob(virDomainJobObjPtr job)
 {
     VIR_DEBUG("Releasing ownership of '%s' async job",
-              qemuDomainAsyncJobTypeToString(job->asyncJob));
+              virDomainAsyncJobTypeToString(job->asyncJob));
 
     if (job->asyncOwner != virThreadSelfID()) {
         VIR_WARN("'%s' async job is owned by thread %llu",
-                 qemuDomainAsyncJobTypeToString(job->asyncJob),
+                 virDomainAsyncJobTypeToString(job->asyncJob),
                  job->asyncOwner);
     }
     job->asyncOwner = 0;
 }
 
 static bool
-qemuDomainNestedJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob)
+virDomainNestedJobAllowed(virDomainJobObjPtr jobs, virDomainJob newJob)
 {
     return !jobs->asyncJob ||
-           newJob == QEMU_JOB_NONE ||
+           newJob == VIR_JOB_NONE ||
            (jobs->mask & JOB_MASK(newJob)) != 0;
 }
 
 bool
-qemuDomainJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob)
+virDomainJobAllowed(virDomainJobObjPtr jobs, virDomainJob newJob)
 {
-    return !jobs->active && qemuDomainNestedJobAllowed(jobs, newJob);
+    return !jobs->active && virDomainNestedJobAllowed(jobs, newJob);
 }
 
 static bool
-qemuDomainObjCanSetJob(qemuDomainJobObjPtr job,
-                       qemuDomainJob newJob,
-                       qemuDomainAgentJob newAgentJob)
+virDomainObjCanSetJob(virDomainJobObjPtr job,
+                      virDomainJob newJob,
+                      virDomainAgentJob newAgentJob)
 {
-    return ((newJob == QEMU_JOB_NONE ||
-             job->active == QEMU_JOB_NONE) &&
-            (newAgentJob == QEMU_AGENT_JOB_NONE ||
-             job->agentActive == QEMU_AGENT_JOB_NONE));
+    return ((newJob == VIR_JOB_NONE ||
+             job->active == VIR_JOB_NONE) &&
+            (newAgentJob == VIR_AGENT_JOB_NONE ||
+             job->agentActive == VIR_AGENT_JOB_NONE));
 }
 
 /* Give up waiting for mutex after 30 seconds */
-#define QEMU_JOB_WAIT_TIME (1000ull * 30)
+#define VIR_JOB_WAIT_TIME (1000ull * 30)
 
 /**
- * qemuDomainObjBeginJobInternal:
+ * virDomainObjBeginJobInternal:
  * @obj: domain object
- * @job: qemuDomainJob to start
- * @asyncJob: qemuDomainAsyncJob to start
+ * @job: virDomainJob to start
+ * @asyncJob: virDomainAsyncJob to start
  * @nowait: don't wait trying to acquire @job
  *
  * Acquires job for a domain object which must be locked before
  * calling. If there's already a job running waits up to
- * QEMU_JOB_WAIT_TIME after which the functions fails reporting
+ * VIR_JOB_WAIT_TIME after which the functions fails reporting
  * an error unless @nowait is set.
  *
  * If @nowait is true this function tries to acquire job and if
@@ -322,17 +323,17 @@ qemuDomainObjCanSetJob(qemuDomainJobObjPtr job,
  *         -1 otherwise.
  */
 static int ATTRIBUTE_NONNULL(1)
-qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
-                              qemuDomainJobObjPtr jobObj,
-                              qemuDomainJob job,
-                              qemuDomainAgentJob agentJob,
-                              qemuDomainAsyncJob asyncJob,
-                              bool nowait)
+virDomainObjBeginJobInternal(virDomainObjPtr obj,
+                             virDomainJobObjPtr jobObj,
+                             virDomainJob job,
+                             virDomainAgentJob agentJob,
+                             virDomainAsyncJob asyncJob,
+                             bool nowait)
 {
     unsigned long long now;
     unsigned long long then;
-    bool nested = job == QEMU_JOB_ASYNC_NESTED;
-    bool async = job == QEMU_JOB_ASYNC;
+    bool nested = job == VIR_JOB_ASYNC_NESTED;
+    bool async = job == VIR_JOB_ASYNC;
     const char *blocker = NULL;
     const char *agentBlocker = NULL;
     int ret = -1;
@@ -342,28 +343,28 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
 
     VIR_DEBUG("Starting job: job=%s agentJob=%s asyncJob=%s "
               "(vm=%p name=%s, current job=%s agentJob=%s async=%s)",
-              qemuDomainJobTypeToString(job),
-              qemuDomainAgentJobTypeToString(agentJob),
-              qemuDomainAsyncJobTypeToString(asyncJob),
+              virDomainJobTypeToString(job),
+              virDomainAgentJobTypeToString(agentJob),
+              virDomainAsyncJobTypeToString(asyncJob),
               obj, obj->def->name,
-              qemuDomainJobTypeToString(jobObj->active),
-              qemuDomainAgentJobTypeToString(jobObj->agentActive),
-              qemuDomainAsyncJobTypeToString(jobObj->asyncJob));
+              virDomainJobTypeToString(jobObj->active),
+              virDomainAgentJobTypeToString(jobObj->agentActive),
+              virDomainAsyncJobTypeToString(jobObj->asyncJob));
 
     if (virTimeMillisNow(&now) < 0)
         return -1;
 
     jobObj->cb->jobcb->increaseJobsQueued(obj);
-    then = now + QEMU_JOB_WAIT_TIME;
+    then = now + VIR_JOB_WAIT_TIME;
 
  retry:
-    if ((!async && job != QEMU_JOB_DESTROY) &&
+    if ((!async && job != VIR_JOB_DESTROY) &&
         jobObj->cb->jobcb->getMaxQueuedJobs(obj) &&
         jobObj->cb->jobcb->getJobsQueued(obj) > jobObj->cb->jobcb->getMaxQueuedJobs(obj)) {
         goto error;
     }
 
-    while (!nested && !qemuDomainNestedJobAllowed(jobObj, job)) {
+    while (!nested && !virDomainNestedJobAllowed(jobObj, job)) {
         if (nowait)
             goto cleanup;
 
@@ -372,7 +373,7 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
             goto error;
     }
 
-    while (!qemuDomainObjCanSetJob(jobObj, job, agentJob)) {
+    while (!virDomainObjCanSetJob(jobObj, job, agentJob)) {
         if (nowait)
             goto cleanup;
 
@@ -383,18 +384,18 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
 
     /* No job is active but a new async job could have been started while obj
      * was unlocked, so we need to recheck it. */
-    if (!nested && !qemuDomainNestedJobAllowed(jobObj, job))
+    if (!nested && !virDomainNestedJobAllowed(jobObj, job))
         goto retry;
 
     ignore_value(virTimeMillisNow(&now));
 
     if (job) {
-        qemuDomainObjResetJob(jobObj);
+        virDomainObjResetJob(jobObj);
 
-        if (job != QEMU_JOB_ASYNC) {
+        if (job != VIR_JOB_ASYNC) {
             VIR_DEBUG("Started job: %s (async=%s vm=%p name=%s)",
-                      qemuDomainJobTypeToString(job),
-                      qemuDomainAsyncJobTypeToString(jobObj->asyncJob),
+                      virDomainJobTypeToString(job),
+                      virDomainAsyncJobTypeToString(jobObj->asyncJob),
                       obj, obj->def->name);
             jobObj->active = job;
             jobObj->owner = virThreadSelfID();
@@ -402,9 +403,9 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
             jobObj->started = now;
         } else {
             VIR_DEBUG("Started async job: %s (vm=%p name=%s)",
-                      qemuDomainAsyncJobTypeToString(asyncJob),
+                      virDomainAsyncJobTypeToString(asyncJob),
                       obj, obj->def->name);
-            qemuDomainObjResetAsyncJob(jobObj);
+            virDomainObjResetAsyncJob(jobObj);
             jobObj->cb->jobcb->currentJobInfoInit(jobObj, now);
             jobObj->asyncJob = asyncJob;
             jobObj->asyncOwner = virThreadSelfID();
@@ -414,20 +415,20 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
     }
 
     if (agentJob) {
-        qemuDomainObjResetAgentJob(jobObj);
+        virDomainObjResetAgentJob(jobObj);
 
         VIR_DEBUG("Started agent job: %s (vm=%p name=%s job=%s async=%s)",
-                  qemuDomainAgentJobTypeToString(agentJob),
+                  virDomainAgentJobTypeToString(agentJob),
                   obj, obj->def->name,
-                  qemuDomainJobTypeToString(jobObj->active),
-                  qemuDomainAsyncJobTypeToString(jobObj->asyncJob));
+                  virDomainJobTypeToString(jobObj->active),
+                  virDomainAsyncJobTypeToString(jobObj->asyncJob));
         jobObj->agentActive = agentJob;
         jobObj->agentOwner = virThreadSelfID();
         jobObj->agentOwnerAPI = virThreadJobGet();
         jobObj->agentStarted = now;
     }
 
-    if (qemuDomainTrackJob(job))
+    if (virDomainTrackJob(job))
         jobObj->cb->saveStatus(obj);
 
     return 0;
@@ -445,13 +446,13 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
              "current job is (%s, %s, %s) "
              "owned by (%llu %s, %llu %s, %llu %s (flags=0x%lx)) "
              "for (%llus, %llus, %llus)",
-             qemuDomainJobTypeToString(job),
-             qemuDomainAgentJobTypeToString(agentJob),
-             qemuDomainAsyncJobTypeToString(asyncJob),
+             virDomainJobTypeToString(job),
+             virDomainAgentJobTypeToString(agentJob),
+             virDomainAsyncJobTypeToString(asyncJob),
              obj->def->name,
-             qemuDomainJobTypeToString(jobObj->active),
-             qemuDomainAgentJobTypeToString(jobObj->agentActive),
-             qemuDomainAsyncJobTypeToString(jobObj->asyncJob),
+             virDomainJobTypeToString(jobObj->active),
+             virDomainAgentJobTypeToString(jobObj->agentActive),
+             virDomainAsyncJobTypeToString(jobObj->asyncJob),
              jobObj->owner, NULLSTR(jobObj->ownerAPI),
              jobObj->agentOwner, NULLSTR(jobObj->agentOwnerAPI),
              jobObj->asyncOwner, NULLSTR(jobObj->asyncOwnerAPI),
@@ -459,7 +460,7 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
              duration / 1000, agentDuration / 1000, asyncDuration / 1000);
 
     if (job) {
-        if (nested || qemuDomainNestedJobAllowed(jobObj, job))
+        if (nested || virDomainNestedJobAllowed(jobObj, job))
             blocker = jobObj->ownerAPI;
         else
             blocker = jobObj->asyncOwnerAPI;
@@ -528,48 +529,48 @@ qemuDomainObjBeginJobInternal(virDomainObjPtr obj,
  * obj must be locked before calling
  *
  * This must be called by anything that will change the VM state
- * in any way, or anything that will use the QEMU monitor.
+ * in any way, or anything that will use the (QEMU) monitor.
  *
  * Successful calls must be followed by EndJob eventually
  */
-int qemuDomainObjBeginJob(virDomainObjPtr obj,
-                          qemuDomainJobObjPtr jobObj,
-                          qemuDomainJob job)
+int virDomainObjBeginJob(virDomainObjPtr obj,
+                         virDomainJobObjPtr jobObj,
+                         virDomainJob job)
 {
-    if (qemuDomainObjBeginJobInternal(obj, jobObj, job,
-                                      QEMU_AGENT_JOB_NONE,
-                                      QEMU_ASYNC_JOB_NONE, false) < 0)
+    if (virDomainObjBeginJobInternal(obj, jobObj, job,
+                                     VIR_AGENT_JOB_NONE,
+                                     VIR_ASYNC_JOB_NONE, false) < 0)
         return -1;
     else
         return 0;
 }
 
 /**
- * qemuDomainObjBeginAgentJob:
+ * virDomainObjBeginAgentJob:
  *
  * Grabs agent type of job. Use if caller talks to guest agent only.
  *
- * To end job call qemuDomainObjEndAgentJob.
+ * To end job call virDomainObjEndAgentJob.
  */
 int
-qemuDomainObjBeginAgentJob(virDomainObjPtr obj,
-                           qemuDomainJobObjPtr jobObj,
-                           qemuDomainAgentJob agentJob)
+virDomainObjBeginAgentJob(virDomainObjPtr obj,
+                          virDomainJobObjPtr jobObj,
+                          virDomainAgentJob agentJob)
 {
-    return qemuDomainObjBeginJobInternal(obj, jobObj, QEMU_JOB_NONE,
-                                         agentJob,
-                                         QEMU_ASYNC_JOB_NONE, false);
+    return virDomainObjBeginJobInternal(obj, jobObj, VIR_JOB_NONE,
+                                        agentJob,
+                                        VIR_ASYNC_JOB_NONE, false);
 }
 
-int qemuDomainObjBeginAsyncJob(virDomainObjPtr obj,
-                               qemuDomainJobObjPtr jobObj,
-                               qemuDomainAsyncJob asyncJob,
-                               virDomainJobOperation operation,
-                               unsigned long apiFlags)
+int virDomainObjBeginAsyncJob(virDomainObjPtr obj,
+                              virDomainJobObjPtr jobObj,
+                              virDomainAsyncJob asyncJob,
+                              virDomainJobOperation operation,
+                              unsigned long apiFlags)
 {
-    if (qemuDomainObjBeginJobInternal(obj, jobObj, QEMU_JOB_ASYNC,
-                                      QEMU_AGENT_JOB_NONE,
-                                      asyncJob, false) < 0)
+    if (virDomainObjBeginJobInternal(obj, jobObj, VIR_JOB_ASYNC,
+                                     VIR_AGENT_JOB_NONE,
+                                     asyncJob, false) < 0)
         return -1;
 
     jobObj->cb->jobcb->setJobInfoOperation(jobObj, operation);
@@ -578,9 +579,9 @@ int qemuDomainObjBeginAsyncJob(virDomainObjPtr obj,
 }
 
 int
-qemuDomainObjBeginNestedJob(virDomainObjPtr obj,
-                            qemuDomainJobObjPtr jobObj,
-                            qemuDomainAsyncJob asyncJob)
+virDomainObjBeginNestedJob(virDomainObjPtr obj,
+                           virDomainJobObjPtr jobObj,
+                           virDomainAsyncJob asyncJob)
 {
     if (asyncJob != jobObj->asyncJob) {
         virReportError(VIR_ERR_INTERNAL_ERROR,
@@ -594,56 +595,56 @@ qemuDomainObjBeginNestedJob(virDomainObjPtr obj,
                  jobObj->asyncOwner);
     }
 
-    return qemuDomainObjBeginJobInternal(obj, jobObj,
-                                         QEMU_JOB_ASYNC_NESTED,
-                                         QEMU_AGENT_JOB_NONE,
-                                         QEMU_ASYNC_JOB_NONE,
+    return virDomainObjBeginJobInternal(obj, jobObj,
+                                         VIR_JOB_ASYNC_NESTED,
+                                         VIR_AGENT_JOB_NONE,
+                                         VIR_ASYNC_JOB_NONE,
                                          false);
 }
 
 /**
- * qemuDomainObjBeginJobNowait:
+ * virDomainObjBeginJobNowait:
  *
  * @obj: domain object
- * @jobObj: qemuDomainJobObjPtr
- * @job: qemuDomainJob to start
+ * @jobObj: virDomainJobObjPtr
+ * @job: virDomainJob to start
  *
  * Acquires job for a domain object which must be locked before
  * calling. If there's already a job running it returns
  * immediately without any error reported.
  *
- * Returns: see qemuDomainObjBeginJobInternal
+ * Returns: see virDomainObjBeginJobInternal
  */
 int
-qemuDomainObjBeginJobNowait(virDomainObjPtr obj,
-                            qemuDomainJobObjPtr jobObj,
-                            qemuDomainJob job)
+virDomainObjBeginJobNowait(virDomainObjPtr obj,
+                           virDomainJobObjPtr jobObj,
+                           virDomainJob job)
 {
-    return qemuDomainObjBeginJobInternal(obj, jobObj, job,
-                                         QEMU_AGENT_JOB_NONE,
-                                         QEMU_ASYNC_JOB_NONE, true);
+    return virDomainObjBeginJobInternal(obj, jobObj, job,
+                                        VIR_AGENT_JOB_NONE,
+                                        VIR_ASYNC_JOB_NONE, true);
 }
 
 /*
  * obj must be locked and have a reference before calling
  *
  * To be called after completing the work associated with the
- * earlier qemuDomainBeginJob() call
+ * earlier virDomainBeginJob() call
  */
 void
-qemuDomainObjEndJob(virDomainObjPtr obj, qemuDomainJobObjPtr jobObj)
+virDomainObjEndJob(virDomainObjPtr obj, virDomainJobObjPtr jobObj)
 {
-    qemuDomainJob job = jobObj->active;
+    virDomainJob job = jobObj->active;
 
     jobObj->cb->jobcb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping job: %s (async=%s vm=%p name=%s)",
-              qemuDomainJobTypeToString(job),
-              qemuDomainAsyncJobTypeToString(jobObj->asyncJob),
+              virDomainJobTypeToString(job),
+              virDomainAsyncJobTypeToString(jobObj->asyncJob),
               obj, obj->def->name);
 
-    qemuDomainObjResetJob(jobObj);
-    if (qemuDomainTrackJob(job))
+    virDomainObjResetJob(jobObj);
+    if (virDomainTrackJob(job))
         jobObj->cb->saveStatus(obj);
     /* We indeed need to wake up ALL threads waiting because
      * grabbing a job requires checking more variables. */
@@ -651,45 +652,45 @@ qemuDomainObjEndJob(virDomainObjPtr obj, qemuDomainJobObjPtr jobObj)
 }
 
 void
-qemuDomainObjEndAgentJob(virDomainObjPtr obj,
-                         qemuDomainJobObjPtr jobObj)
+virDomainObjEndAgentJob(virDomainObjPtr obj,
+                        virDomainJobObjPtr jobObj)
 {
-    qemuDomainAgentJob agentJob = jobObj->agentActive;
+    virDomainAgentJob agentJob = jobObj->agentActive;
 
     jobObj->cb->jobcb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping agent job: %s (async=%s vm=%p name=%s)",
-              qemuDomainAgentJobTypeToString(agentJob),
-              qemuDomainAsyncJobTypeToString(jobObj->asyncJob),
+              virDomainAgentJobTypeToString(agentJob),
+              virDomainAsyncJobTypeToString(jobObj->asyncJob),
               obj, obj->def->name);
 
-    qemuDomainObjResetAgentJob(jobObj);
+    virDomainObjResetAgentJob(jobObj);
     /* We indeed need to wake up ALL threads waiting because
      * grabbing a job requires checking more variables. */
     virCondBroadcast(&jobObj->cond);
 }
 
 void
-qemuDomainObjEndAsyncJob(virDomainObjPtr obj,
-                         qemuDomainJobObjPtr jobObj)
+virDomainObjEndAsyncJob(virDomainObjPtr obj,
+                        virDomainJobObjPtr jobObj)
 {
     jobObj->cb->jobcb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping async job: %s (vm=%p name=%s)",
-              qemuDomainAsyncJobTypeToString(jobObj->asyncJob),
+              virDomainAsyncJobTypeToString(jobObj->asyncJob),
               obj, obj->def->name);
 
-    qemuDomainObjResetAsyncJob(jobObj);
+    virDomainObjResetAsyncJob(jobObj);
     jobObj->cb->saveStatus(obj);
     virCondBroadcast(&jobObj->asyncCond);
 }
 
 void
-qemuDomainObjAbortAsyncJob(virDomainObjPtr obj,
-                           qemuDomainJobObjPtr job)
+virDomainObjAbortAsyncJob(virDomainObjPtr obj,
+                          virDomainJobObjPtr job)
 {
     VIR_DEBUG("Requesting abort of async job: %s (vm=%p name=%s)",
-              qemuDomainAsyncJobTypeToString(job->asyncJob),
+              virDomainAsyncJobTypeToString(job->asyncJob),
               obj, obj->def->name);
 
     job->abortJob = true;
@@ -697,32 +698,32 @@ qemuDomainObjAbortAsyncJob(virDomainObjPtr obj,
 }
 
 int
-qemuDomainObjPrivateXMLFormatJob(virBufferPtr buf,
-                                 virDomainObjPtr vm,
-                                 qemuDomainJobObjPtr jobObj)
+virDomainObjPrivateXMLFormatJob(virBufferPtr buf,
+                                virDomainObjPtr vm,
+                                virDomainJobObjPtr jobObj)
 {
     g_auto(virBuffer) attrBuf = VIR_BUFFER_INITIALIZER;
     g_auto(virBuffer) childBuf = VIR_BUFFER_INIT_CHILD(buf);
-    qemuDomainJob job = jobObj->active;
+    virDomainJob job = jobObj->active;
 
-    if (!qemuDomainTrackJob(job))
-        job = QEMU_JOB_NONE;
+    if (!virDomainTrackJob(job))
+        job = VIR_JOB_NONE;
 
-    if (job == QEMU_JOB_NONE &&
-        jobObj->asyncJob == QEMU_ASYNC_JOB_NONE)
+    if (job == VIR_JOB_NONE &&
+        jobObj->asyncJob == VIR_ASYNC_JOB_NONE)
         return 0;
 
     virBufferAsprintf(&attrBuf, " type='%s' async='%s'",
-                      qemuDomainJobTypeToString(job),
-                      qemuDomainAsyncJobTypeToString(jobObj->asyncJob));
+                      virDomainJobTypeToString(job),
+                      virDomainAsyncJobTypeToString(jobObj->asyncJob));
 
     if (jobObj->phase) {
         virBufferAsprintf(&attrBuf, " phase='%s'",
-                          qemuDomainAsyncJobPhaseToString(jobObj->asyncJob,
+                          virDomainAsyncJobPhaseToString(jobObj->asyncJob,
                                                           jobObj->phase));
     }
 
-    if (jobObj->asyncJob != QEMU_ASYNC_JOB_NONE)
+    if (jobObj->asyncJob != VIR_ASYNC_JOB_NONE)
         virBufferAsprintf(&attrBuf, " flags='0x%lx'", jobObj->apiFlags);
 
     if (jobObj->cb->jobcb->formatJob(&childBuf, jobObj, vm) < 0)
@@ -735,9 +736,9 @@ qemuDomainObjPrivateXMLFormatJob(virBufferPtr buf,
 
 
 int
-qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
-                                xmlXPathContextPtr ctxt,
-                                qemuDomainJobObjPtr job)
+virDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
+                               xmlXPathContextPtr ctxt,
+                               virDomainJobObjPtr job)
 {
     VIR_XPATH_NODE_AUTORESTORE(ctxt)
     g_autofree char *tmp = NULL;
@@ -748,7 +749,7 @@ qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
     if ((tmp = virXPathString("string(@type)", ctxt))) {
         int type;
 
-        if ((type = qemuDomainJobTypeFromString(tmp)) < 0) {
+        if ((type = virDomainJobTypeFromString(tmp)) < 0) {
             virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("Unknown job type %s"), tmp);
             return -1;
@@ -760,7 +761,7 @@ qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
     if ((tmp = virXPathString("string(@async)", ctxt))) {
         int async;
 
-        if ((async = qemuDomainAsyncJobTypeFromString(tmp)) < 0) {
+        if ((async = virDomainAsyncJobTypeFromString(tmp)) < 0) {
             virReportError(VIR_ERR_INTERNAL_ERROR,
                            _("Unknown async job type %s"), tmp);
             return -1;
@@ -769,7 +770,7 @@ qemuDomainObjPrivateXMLParseJob(virDomainObjPtr vm,
         job->asyncJob = async;
 
         if ((tmp = virXPathString("string(@phase)", ctxt))) {
-            job->phase = qemuDomainAsyncJobPhaseFromString(async, tmp);
+            job->phase = virDomainAsyncJobPhaseFromString(async, tmp);
             if (job->phase < 0) {
                 virReportError(VIR_ERR_INTERNAL_ERROR,
                                _("Unknown job phase %s"), tmp);

@@ -12,7 +12,6 @@ qemu_driver_sources = [
   'qemu_dbus.c',
   'qemu_domain.c',
   'qemu_domain_address.c',
-  'qemu_domainjob.c',
   'qemu_driver.c',
   'qemu_extdevice.c',
   'qemu_firmware.c',

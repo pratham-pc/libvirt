@@ -32,11 +32,11 @@ int qemuProcessPrepareMonitorChr(virDomainChrSourceDefPtr monConfig,
 int qemuProcessStartCPUs(virQEMUDriverPtr driver,
                          virDomainObjPtr vm,
                          virDomainRunningReason reason,
-                         qemuDomainAsyncJob asyncJob);
+                         virDomainAsyncJob asyncJob);
 int qemuProcessStopCPUs(virQEMUDriverPtr driver,
                         virDomainObjPtr vm,
                         virDomainPausedReason reason,
-                        qemuDomainAsyncJob asyncJob);
+                        virDomainAsyncJob asyncJob);
 
 int qemuProcessBuildDestroyMemoryPaths(virQEMUDriverPtr driver,
                                        virDomainObjPtr vm,
@@ -86,7 +86,7 @@ int qemuProcessStart(virConnectPtr conn,
                      virQEMUDriverPtr driver,
                      virDomainObjPtr vm,
                      virCPUDefPtr updatedCPU,
-                     qemuDomainAsyncJob asyncJob,
+                     virDomainAsyncJob asyncJob,
                      const char *migrateFrom,
                      int stdin_fd,
                      const char *stdin_path,
@@ -105,7 +105,7 @@ virCommandPtr qemuProcessCreatePretendCmd(virQEMUDriverPtr driver,
 int qemuProcessInit(virQEMUDriverPtr driver,
                     virDomainObjPtr vm,
                     virCPUDefPtr updatedCPU,
-                    qemuDomainAsyncJob asyncJob,
+                    virDomainAsyncJob asyncJob,
                     bool migration,
                     unsigned int flags);
 
@@ -122,7 +122,7 @@ int qemuProcessPrepareHost(virQEMUDriverPtr driver,
 int qemuProcessLaunch(virConnectPtr conn,
                       virQEMUDriverPtr driver,
                       virDomainObjPtr vm,
-                      qemuDomainAsyncJob asyncJob,
+                      virDomainAsyncJob asyncJob,
                       qemuProcessIncomingDefPtr incoming,
                       virDomainMomentObjPtr snapshot,
                       virNetDevVPortProfileOp vmop,
@@ -130,13 +130,13 @@ int qemuProcessLaunch(virConnectPtr conn,
 
 int qemuProcessFinishStartup(virQEMUDriverPtr driver,
                              virDomainObjPtr vm,
-                             qemuDomainAsyncJob asyncJob,
+                             virDomainAsyncJob asyncJob,
                              bool startCPUs,
                              virDomainPausedReason pausedReason);
 
 int qemuProcessRefreshState(virQEMUDriverPtr driver,
                             virDomainObjPtr vm,
-                            qemuDomainAsyncJob asyncJob);
+                            virDomainAsyncJob asyncJob);
 
 typedef enum {
     VIR_QEMU_PROCESS_STOP_MIGRATED      = 1 << 0,
@@ -144,12 +144,12 @@ typedef enum {
 } qemuProcessStopFlags;
 
 int qemuProcessBeginStopJob(virDomainObjPtr vm,
-                            qemuDomainJob job,
+                            virDomainJob job,
                             bool forceKill);
 void qemuProcessStop(virQEMUDriverPtr driver,
                      virDomainObjPtr vm,
                      virDomainShutoffReason reason,
-                     qemuDomainAsyncJob asyncJob,
+                     virDomainAsyncJob asyncJob,
                      unsigned int flags);
 
 typedef enum {
@@ -190,13 +190,13 @@ int qemuProcessSetupIOThread(virDomainObjPtr vm,
 
 int qemuRefreshVirtioChannelState(virQEMUDriverPtr driver,
                                   virDomainObjPtr vm,
-                                  qemuDomainAsyncJob asyncJob);
+                                  virDomainAsyncJob asyncJob);
 
 int qemuProcessRefreshBalloonState(virDomainObjPtr vm,
                                    int asyncJob);
 
 int qemuProcessRefreshDisks(virDomainObjPtr vm,
-                            qemuDomainAsyncJob asyncJob);
+                            virDomainAsyncJob asyncJob);
 
 int qemuProcessStartManagedPRDaemon(virDomainObjPtr vm) G_GNUC_NO_INLINE;
 

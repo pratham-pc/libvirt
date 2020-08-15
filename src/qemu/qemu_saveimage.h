@@ -22,7 +22,7 @@
 #include "datatypes.h"
 
 #include "qemu_conf.h"
-#include "qemu_domainjob.h"
+#include "virdomainjob.h"
 #include "qemu_domain.h"
 
 /* It would be nice to replace 'Qemud' with 'Qemu' but
@@ -69,7 +69,7 @@ qemuSaveImageStartVM(virConnectPtr conn,
                      virQEMUSaveDataPtr data,
                      const char *path,
                      bool start_paused,
-                     qemuDomainAsyncJob asyncJob)
+                     virDomainAsyncJob asyncJob)
     ATTRIBUTE_NONNULL(4) ATTRIBUTE_NONNULL(5) ATTRIBUTE_NONNULL(6);
 
 int
@@ -98,7 +98,7 @@ qemuSaveImageCreate(virQEMUDriverPtr driver,
                     virQEMUSaveDataPtr data,
                     virCommandPtr compressor,
                     unsigned int flags,
-                    qemuDomainAsyncJob asyncJob);
+                    virDomainAsyncJob asyncJob);
 
 int
 virQEMUSaveDataWrite(virQEMUSaveDataPtr data,

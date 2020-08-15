@@ -47,7 +47,7 @@ qemuBlockNodeNameGetBackingChain(virJSONValuePtr namednodesdata,
 
 int
 qemuBlockNodeNamesDetect(virDomainObjPtr vm,
-                         qemuDomainAsyncJob asyncJob);
+                         virDomainAsyncJob asyncJob);
 
 virHashTablePtr
 qemuBlockGetNodeData(virJSONValuePtr data);
@@ -140,7 +140,7 @@ qemuBlockStorageSourceAttachRollback(qemuMonitorPtr mon,
 
 int
 qemuBlockStorageSourceDetachOneBlockdev(virDomainObjPtr vm,
-                                        qemuDomainAsyncJob asyncJob,
+                                        virDomainAsyncJob asyncJob,
                                         virStorageSourcePtr src);
 
 struct _qemuBlockStorageSourceChainData {
@@ -205,7 +205,7 @@ qemuBlockStorageSourceCreate(virDomainObjPtr vm,
                              virStorageSourcePtr backingStore,
                              virStorageSourcePtr chain,
                              qemuBlockStorageSourceAttachDataPtr data,
-                             qemuDomainAsyncJob asyncJob);
+                             virDomainAsyncJob asyncJob);
 
 int
 qemuBlockStorageSourceCreateDetectSize(virHashTablePtr blockNamedNodeData,
@@ -225,7 +225,7 @@ qemuBlockNamedNodeDataGetBitmapByName(virHashTablePtr blockNamedNodeData,
 
 virHashTablePtr
 qemuBlockGetNamedNodeData(virDomainObjPtr vm,
-                          qemuDomainAsyncJob asyncJob);
+                          virDomainAsyncJob asyncJob);
 
 int
 qemuBlockGetBitmapMergeActions(virStorageSourcePtr topsrc,
@@ -259,11 +259,11 @@ qemuBlockBitmapsHandleCommitFinish(virStorageSourcePtr topsrc,
 int
 qemuBlockReopenReadWrite(virDomainObjPtr vm,
                          virStorageSourcePtr src,
-                         qemuDomainAsyncJob asyncJob);
+                         virDomainAsyncJob asyncJob);
 int
 qemuBlockReopenReadOnly(virDomainObjPtr vm,
                         virStorageSourcePtr src,
-                        qemuDomainAsyncJob asyncJob);
+                        virDomainAsyncJob asyncJob);
 
 bool
 qemuBlockStorageSourceNeedsStorageSliceLayer(const virStorageSource *src);

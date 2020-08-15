@@ -261,7 +261,7 @@ qemuSaveImageCreate(virQEMUDriverPtr driver,
                     virQEMUSaveDataPtr data,
                     virCommandPtr compressor,
                     unsigned int flags,
-                    qemuDomainAsyncJob asyncJob)
+                    virDomainAsyncJob asyncJob)
 {
     g_autoptr(virQEMUDriverConfig) cfg = virQEMUDriverGetConfig(driver);
     bool needUnlink = false;
@@ -578,7 +578,7 @@ qemuSaveImageStartVM(virConnectPtr conn,
                      virQEMUSaveDataPtr data,
                      const char *path,
                      bool start_paused,
-                     qemuDomainAsyncJob asyncJob)
+                     virDomainAsyncJob asyncJob)
 {
     qemuDomainObjPrivatePtr priv = vm->privateData;
     int ret = -1;

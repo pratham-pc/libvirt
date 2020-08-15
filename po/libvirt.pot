@@ -12344,7 +12344,7 @@ msgstr ""
 msgid "Invalid ipv6 setting '%s' in network '%s' NAT"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1426
+#: src/hypervisor/virdomainjob.c:784
 msgid "Invalid job flags"
 msgstr ""
 
@@ -23238,7 +23238,7 @@ msgstr ""
 msgid "Unknown architecture %s"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1408
+#: src/hypervisor/virdomainjob.c:766
 #, c-format
 msgid "Unknown async job type %s"
 msgstr ""
@@ -23389,12 +23389,12 @@ msgstr ""
 msgid "Unknown job"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1418
+#: src/hypervisor/virdomainjob.c:776
 #, c-format
 msgid "Unknown job phase %s"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1396
+#: src/hypervisor/virdomainjob.c:754
 #, c-format
 msgid "Unknown job type %s"
 msgstr ""
@@ -25838,50 +25838,50 @@ msgid "cannot abort migration in post-copy mode"
 msgstr ""
 
 #: src/libxl/libxl_domain.c:152 src/lxc/lxc_domain.c:126
-#: src/qemu/qemu_domainjob.c:1010 src/vz/vz_utils.c:623
+#: src/hypervisor/virdomainjob.c:520 src/vz/vz_utils.c:623
 msgid "cannot acquire job mutex"
 msgstr ""
 
 #: src/libxl/libxl_domain.c:149 src/lxc/lxc_domain.c:123
-#: src/qemu/qemu_domainjob.c:980 src/vz/vz_utils.c:620
+#: src/hypervisor/virdomainjob.c:490 src/vz/vz_utils.c:620
 msgid "cannot acquire state change lock"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:975
+#: src/hypervisor/virdomainjob.c:485
 #, c-format
 msgid "cannot acquire state change lock (held by agent=%s)"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:999
+#: src/hypervisor/virdomainjob.c:509
 #, c-format
 msgid ""
 "cannot acquire state change lock (held by agent=%s) due to max_queued limit"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:965
+#: src/hypervisor/virdomainjob.c:475
 #, c-format
 msgid "cannot acquire state change lock (held by monitor=%s agent=%s)"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:987
+#: src/hypervisor/virdomainjob.c:497
 #, c-format
 msgid ""
 "cannot acquire state change lock (held by monitor=%s agent=%s) due to "
 "max_queued limit"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:970
+#: src/hypervisor/virdomainjob.c:480
 #, c-format
 msgid "cannot acquire state change lock (held by monitor=%s)"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:993
+#: src/hypervisor/virdomainjob.c:503
 #, c-format
 msgid ""
 "cannot acquire state change lock (held by monitor=%s) due to max_queued limit"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1005
+#: src/hypervisor/virdomainjob.c:514
 msgid "cannot acquire state change lock due to max_queued limit"
 msgstr ""
 
@@ -34693,7 +34693,7 @@ msgstr ""
 msgid "invalid iothreads count '%s'"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:684
+#: src/qemu/qemu_domain.c:496
 msgid "invalid job statistics type"
 msgstr ""
 
@@ -37902,11 +37902,11 @@ msgstr ""
 msgid "missing storage pool target path"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1321
+#: src/qemu/qemu_domain.c:704
 msgid "missing storage source format"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1315
+#: src/qemu/qemu_domain.c:698
 msgid "missing storage source type"
 msgstr ""
 
@@ -44855,7 +44855,7 @@ msgstr ""
 msgid "unexpected address type for usb disk"
 msgstr ""
 
-#: src/qemu/qemu_domainjob.c:1083
+#: src/hypervisor/virdomainjob.c:588
 #, c-format
 msgid "unexpected async job %d type expected %d"
 msgstr ""

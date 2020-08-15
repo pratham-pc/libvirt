@@ -45,7 +45,7 @@ qemuBackupNotifyBlockjobEnd(virDomainObjPtr vm,
 
 void
 qemuBackupJobTerminate(virDomainObjPtr vm,
-                       qemuDomainJobStatus jobstatus);
+                       virDomainJobStatus jobstatus);
 
 int
 qemuBackupGetJobInfoStats(virDomainObjPtr vm,

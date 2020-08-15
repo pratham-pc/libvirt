@@ -31,7 +31,7 @@
 #include "qemu_monitor.h"
 #include "qemu_agent.h"
 #include "qemu_blockjob.h"
-#include "qemu_domainjob.h"
+#include "virdomainjob.h"
 #include "qemu_conf.h"
 #include "qemu_capabilities.h"
 #include "qemu_migration_params.h"
@@ -133,7 +133,7 @@ typedef qemuDomainObjPrivate *qemuDomainObjPrivatePtr;
 struct _qemuDomainObjPrivate {
     virQEMUDriverPtr driver;
 
-    qemuDomainJobObj job;
+    virDomainJobObj job;
 
     virBitmapPtr namespaces;
 
@@ -501,7 +501,7 @@ struct _qemuDomainBackupStats {
 typedef struct _qemuDomainJobInfo qemuDomainJobInfo;
 typedef qemuDomainJobInfo *qemuDomainJobInfoPtr;
 struct _qemuDomainJobInfo {
-    qemuDomainJobStatus status;
+    virDomainJobStatus status;
     virDomainJobOperation operation;
     unsigned long long started; /* When the async job started */
     unsigned long long stopped; /* When the domain's CPUs were stopped */
@@ -518,7 +518,7 @@ struct _qemuDomainJobInfo {
                             destination. */
     bool timeDeltaSet;
     /* Raw values from QEMU */
-    qemuDomainJobStatsType statsType;
+    virDomainJobStatsType statsType;
     union {
         qemuMonitorMigrationStats mig;
         qemuMonitorDumpStats dump;
@@ -584,7 +584,7 @@ int qemuDomainObjExitMonitor(virDomainObjPtr obj)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
     G_GNUC_WARN_UNUSED_RESULT;
 int qemuDomainObjEnterMonitorAsync(virDomainObjPtr obj,
-                                   qemuDomainAsyncJob asyncJob)
+                                   virDomainAsyncJob asyncJob)
     ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2) G_GNUC_WARN_UNUSED_RESULT;
 
 
@@ -967,7 +967,7 @@ void qemuDomainVcpuPersistOrder(virDomainDefPtr def)
     ATTRIBUTE_NONNULL(1);
 
 int qemuDomainCheckMonitor(virDomainObjPtr vm,
-                           qemuDomainAsyncJob asyncJob);
+                           virDomainAsyncJob asyncJob);
 
 bool qemuDomainSupportsVideoVga(virDomainVideoDefPtr video,
                                 virQEMUCapsPtr qemuCaps);
