@@ -493,6 +493,30 @@ struct _qemuDomainJobPrivate {
     qemuMigrationParamsPtr migParams;
 };
 
+
+void qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
+                                     virDomainObjPtr vm);
+
+void
+qemuDomainJobInfoFree(qemuDomainJobInfoPtr info);
+
+qemuDomainJobInfoPtr
+qemuDomainJobInfoCopy(qemuDomainJobInfoPtr info);
+
+int qemuDomainJobInfoUpdateTime(qemuDomainJobInfoPtr jobInfo)
+    ATTRIBUTE_NONNULL(1);
+int qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
+    ATTRIBUTE_NONNULL(1);
+int qemuDomainJobInfoToInfo(qemuDomainJobInfoPtr jobInfo,
+                            virDomainJobInfoPtr info)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
+int qemuDomainJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
+                              int *type,
+                              virTypedParameterPtr *params,
+                              int *nparams)
+    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
+    ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
+
 int qemuDomainObjStartWorker(virDomainObjPtr dom);
 void qemuDomainObjStopWorker(virDomainObjPtr dom);
 

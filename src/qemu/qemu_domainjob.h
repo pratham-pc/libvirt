@@ -215,9 +215,6 @@ const char *qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
 int qemuDomainAsyncJobPhaseFromString(qemuDomainAsyncJob job,
                                       const char *phase);
 
-void qemuDomainEventEmitJobCompleted(virQEMUDriverPtr driver,
-                                     virDomainObjPtr vm);
-
 int qemuDomainObjBeginJob(virQEMUDriverPtr driver,
                           virDomainObjPtr obj,
                           qemuDomainJob job)
@@ -257,20 +254,6 @@ int qemuDomainObjRestoreJob(virDomainObjPtr obj,
 void qemuDomainObjDiscardAsyncJob(virQEMUDriverPtr driver,
                                   virDomainObjPtr obj);
 void qemuDomainObjReleaseAsyncJob(virDomainObjPtr obj);
-
-int qemuDomainJobInfoUpdateTime(qemuDomainJobInfoPtr jobInfo)
-    ATTRIBUTE_NONNULL(1);
-int qemuDomainJobInfoUpdateDowntime(qemuDomainJobInfoPtr jobInfo)
-    ATTRIBUTE_NONNULL(1);
-int qemuDomainJobInfoToInfo(qemuDomainJobInfoPtr jobInfo,
-                            virDomainJobInfoPtr info)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2);
-int qemuDomainJobInfoToParams(qemuDomainJobInfoPtr jobInfo,
-                              int *type,
-                              virTypedParameterPtr *params,
-                              int *nparams)
-    ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(2)
-    ATTRIBUTE_NONNULL(3) ATTRIBUTE_NONNULL(4);
 
 bool qemuDomainTrackJob(qemuDomainJob job);
 
