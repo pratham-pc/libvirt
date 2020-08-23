@@ -776,6 +776,27 @@ qemuDomainParseJobPrivate(xmlXPathContextPtr ctxt,
     return 0;
 }
 
+static int
+qemuDomainGetJobsQueued(virDomainObjPtr vm)
+{
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    return priv->jobs_queued;
+}
+
+
+static void
+qemuDomainIncreaseJobsQueued(virDomainObjPtr vm)
+{
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    priv->jobs_queued++;
+}
+
+static void
+qemuDomainDecreaseJobsQueued(virDomainObjPtr vm)
+{
+    qemuDomainObjPrivatePtr priv = vm->privateData;
+    priv->jobs_queued--;
+}
 
 static qemuDomainObjPrivateJobCallbacks qemuPrivateJobCallbacks = {
     .allocJobPrivate = qemuJobAllocPrivate,
@@ -785,6 +806,9 @@ static qemuDomainObjPrivateJobCallbacks qemuPrivateJobCallbacks = {
     .parseJob = qemuDomainParseJobPrivate,
     .setJobInfoOperation = qemuDomainJobInfoSetOperation,
     .currentJobInfoInit = qemuDomainCurrentJobInfoInit,
+    .getJobsQueued = qemuDomainGetJobsQueued,
+    .increaseJobsQueued = qemuDomainIncreaseJobsQueued,
+    .decreaseJobsQueued = qemuDomainDecreaseJobsQueued,
 };
 
 /**

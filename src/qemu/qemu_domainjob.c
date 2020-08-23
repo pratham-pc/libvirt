@@ -365,13 +365,13 @@ qemuDomainObjBeginJobInternal(virQEMUDriverPtr driver,
     if (virTimeMillisNow(&now) < 0)
         return -1;
 
-    priv->jobs_queued++;
+    priv->job.cb->increaseJobsQueued(obj);
     then = now + QEMU_JOB_WAIT_TIME;
 
  retry:
     if ((!async && job != QEMU_JOB_DESTROY) &&
         cfg->maxQueuedJobs &&
-        priv->jobs_queued > cfg->maxQueuedJobs) {
+        priv->job.cb->getJobsQueued(obj) > cfg->maxQueuedJobs) {
         goto error;
     }
 
@@ -502,7 +502,7 @@ qemuDomainObjBeginJobInternal(virQEMUDriverPtr driver,
         }
         ret = -2;
     } else if (cfg->maxQueuedJobs &&
-               priv->jobs_queued > cfg->maxQueuedJobs) {
+               priv->job.cb->getJobsQueued(obj) > cfg->maxQueuedJobs) {
         if (blocker && agentBlocker) {
             virReportError(VIR_ERR_OPERATION_FAILED,
                            _("cannot acquire state change "
@@ -532,7 +532,7 @@ qemuDomainObjBeginJobInternal(virQEMUDriverPtr driver,
     }
 
  cleanup:
-    priv->jobs_queued--;
+    priv->job.cb->decreaseJobsQueued(obj);
     return ret;
 }
 
@@ -653,7 +653,7 @@ qemuDomainObjEndJob(virQEMUDriverPtr driver, virDomainObjPtr obj)
     qemuDomainObjPrivatePtr priv = obj->privateData;
     qemuDomainJob job = priv->job.active;
 
-    priv->jobs_queued--;
+    priv->job.cb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping job: %s (async=%s vm=%p name=%s)",
               qemuDomainJobTypeToString(job),
@@ -674,7 +674,7 @@ qemuDomainObjEndAgentJob(virDomainObjPtr obj)
     qemuDomainObjPrivatePtr priv = obj->privateData;
     qemuDomainAgentJob agentJob = priv->job.agentActive;
 
-    priv->jobs_queued--;
+    priv->job.cb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping agent job: %s (async=%s vm=%p name=%s)",
               qemuDomainAgentJobTypeToString(agentJob),
@@ -692,7 +692,7 @@ qemuDomainObjEndAsyncJob(virQEMUDriverPtr driver, virDomainObjPtr obj)
 {
     qemuDomainObjPrivatePtr priv = obj->privateData;
 
-    priv->jobs_queued--;
+    priv->job.cb->decreaseJobsQueued(obj);
 
     VIR_DEBUG("Stopping async job: %s (vm=%p name=%s)",
               qemuDomainAsyncJobTypeToString(priv->job.asyncJob),
