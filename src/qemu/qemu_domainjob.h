@@ -118,20 +118,27 @@ typedef void (*qemuDomainObjIncreaseJobsQueued)(virDomainObjPtr);
 typedef void (*qemuDomainObjDecreaseJobsQueued)(virDomainObjPtr);
 typedef int (*qemuDomainObjGetMaxQueuedJobs)(virDomainObjPtr);
 
-typedef struct _qemuDomainObjPrivateJobCallbacks qemuDomainObjPrivateJobCallbacks;
-typedef qemuDomainObjPrivateJobCallbacks *qemuDomainObjPrivateJobCallbacksPtr;
-struct _qemuDomainObjPrivateJobCallbacks {
-   qemuDomainObjPrivateJobAlloc allocJobPrivate;
-   qemuDomainObjPrivateJobFree freeJobPrivate;
-   qemuDomainObjPrivateJobReset resetJobPrivate;
-   qemuDomainObjPrivateJobFormat formatJob;
-   qemuDomainObjPrivateJobParse parseJob;
-   qemuDomainObjJobInfoSetOperation setJobInfoOperation;
-   qemuDomainObjCurrentJobInfoInit currentJobInfoInit;
-   qemuDomainObjGetJobsQueued getJobsQueued;
-   qemuDomainObjIncreaseJobsQueued increaseJobsQueued;
-   qemuDomainObjDecreaseJobsQueued decreaseJobsQueued;
-   qemuDomainObjGetMaxQueuedJobs getMaxQueuedJobs;
+typedef struct _qemuDomainJobPrivateJobCallbacks qemuDomainJobPrivateJobCallbacks;
+typedef qemuDomainJobPrivateJobCallbacks *qemuDomainJobPrivateJobCallbacksPtr;
+struct _qemuDomainJobPrivateJobCallbacks {
+    qemuDomainObjPrivateJobAlloc allocJobPrivate;
+    qemuDomainObjPrivateJobFree freeJobPrivate;
+    qemuDomainObjPrivateJobReset resetJobPrivate;
+    qemuDomainObjPrivateJobFormat formatJob;
+    qemuDomainObjPrivateJobParse parseJob;
+    qemuDomainObjJobInfoSetOperation setJobInfoOperation;
+    qemuDomainObjCurrentJobInfoInit currentJobInfoInit;
+    qemuDomainObjGetJobsQueued getJobsQueued;
+    qemuDomainObjIncreaseJobsQueued increaseJobsQueued;
+    qemuDomainObjDecreaseJobsQueued decreaseJobsQueued;
+    qemuDomainObjGetMaxQueuedJobs getMaxQueuedJobs;
+};
+
+typedef struct _qemuDomainJobPrivateCallbacks qemuDomainJobPrivateCallbacks;
+typedef qemuDomainJobPrivateCallbacks *qemuDomainJobPrivateCallbacksPtr;
+struct _qemuDomainJobPrivateCallbacks {
+    /* Job related callbacks */
+    qemuDomainJobPrivateJobCallbacksPtr jobcb;
 };
 
 struct _qemuDomainJobObj {
@@ -162,7 +169,7 @@ struct _qemuDomainJobObj {
     unsigned long apiFlags; /* flags passed to the API which started the async job */
 
     void *privateData;                  /* job specific collection of data */
-    qemuDomainObjPrivateJobCallbacksPtr cb;
+    qemuDomainJobPrivateCallbacksPtr cb;
 };
 
 const char *qemuDomainAsyncJobPhaseToString(qemuDomainAsyncJob job,
@@ -216,7 +223,7 @@ void qemuDomainObjFreeJob(qemuDomainJobObjPtr job);
 
 int
 qemuDomainObjInitJob(qemuDomainJobObjPtr job,
-                     qemuDomainObjPrivateJobCallbacksPtr cb);
+                     qemuDomainJobPrivateCallbacksPtr cb);
 
 bool qemuDomainJobAllowed(qemuDomainJobObjPtr jobs, qemuDomainJob newJob);
 
